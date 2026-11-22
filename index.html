@@ -1,6 +1,5 @@
 <!doctype html>
-<html lang="en">
-<head>
+<html lang="en"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0d0a19">
@@ -46,7 +45,7 @@
 <script>
 // To publish a shared app, put your Supabase URL and *publishable/anon* key here.
 // Never use a Supabase service_role or secret API key in this page.
-const CONFIG = { SUPABASE_URL: '', SUPABASE_ANON_KEY: '' };
+const CONFIG = { SUPABASE_URL: "https://txkdglpakojrotnmsaos.supabase.co/", SUPABASE_ANON_KEY: "sb_publishable_hx9d4Nd-tOFGusFEv4md7w_xQxNlb7e" };
 const $ = s => document.querySelector(s);
 const esc = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'id-'+Math.random().toString(36).slice(2)+Date.now();
@@ -309,4 +308,5 @@ function bind(){
 }
 async function boot(){try{state.data=JSON.parse(localStorage.getItem('rfm_local')||'null')||seedData()}catch{state.data=seedData()}localSave();bind();render();let url=localStorage.getItem('rfm_url')||CONFIG.SUPABASE_URL,key=localStorage.getItem('rfm_key')||CONFIG.SUPABASE_ANON_KEY;if(url&&key){try{await connectCloud(url,key)}catch(err){state.mode='local';state.roomId=null;state.client=null;toast('Shared connection failed: '+err.message,true);render()}}}
 boot();
-</script></body></html>
+</script>
+</body></html>
