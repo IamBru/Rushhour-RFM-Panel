@@ -157,13 +157,13 @@ function render(){
  </div>
  <div class="dashboard">
    <aside class="panel catalog">
-     <div class="panel-head"><div class="flex" style="justify-content:space-between"><div class="title">Master item catalog</div>${isAdmin()?'<button class="btn icon" data-action="new-item" title="Add item type (admins only)">+</button>':''}</div>
+     <div class="panel-head"><div class="title">Master item catalog</div>
        <div class="help">Available item types, separate from storage. Drag an item into a storage to add it; drag it back here to remove it from that storage.</div>
        <input class="search" id="item-search" placeholder="Search items..." value="${esc(state.search)}" aria-label="Search items" style="margin-top:15px">
+       ${isAdmin()?'<button class="btn soft full" data-action="new-item" style="margin-top:10px">+ Add catalog item</button>':''}
        <div class="filters">${['All',...new Set(d.items.map(x=>x.category))].map(c=>`<button class="chip ${state.filter===c?'active':''}" data-action="filter" data-filter="${esc(c)}">${esc(c)}</button>`).join('')}</div>
      </div>
      <div class="catalog-items" id="catalog-items">${renderCatalog()}</div>
-     ${isAdmin()?'<div class="catalog-foot"><button class="btn soft full" data-action="new-item">+ Add catalog item</button></div>':''}
    </aside>
    <section>
      <div class="board-head"><div class="board-title"><div class="tabs"><button class="tab ${state.tab==='storages'?'active':''}" data-action="tab" data-tab="storages">Storage board</button>${isAdmin()?`<button class="tab ${state.tab==='activity'?'active':''}" data-action="tab" data-tab="activity">Activity log</button>`:''}</div></div>
@@ -174,7 +174,7 @@ function render(){
 }
 function renderHeader(showActions){return `<header class="top"><div class="brand"><div class="mark">RFM</div><div><h1>RFM Panel</h1><div class="subtitle">${esc(state.data?.room?.name||'Simple shared inventory')}</div></div></div>
  <div class="top-actions"><span class="pill"><i class="dot ${state.mode==='local'?'local':''}"></i>${state.mode==='cloud'?'RFM connected · syncs every 5s':'Local demo'}</span>
- ${showActions?`<button class="btn ghost" data-action="profile">👤 ${esc(currentName())}</button><button class="btn ghost" data-action="export">↓ Backup</button>${state.mode==='cloud'?(isAdmin()?'<button class="btn ghost" data-action="share">⚙ Members & invites</button>':''):'<button class="btn ghost" data-action="configure">⚙ Sharing</button>'}`:(location.hostname.endsWith('.github.io')?'':'<button class="btn ghost" data-action="configure">⚙ Settings</button>')}</div></header>`}
+ ${showActions?`<button class="btn ghost" data-action="profile">👤 ${esc(currentName())}</button>${isAdmin()?'<button class="btn ghost" data-action="export">↓ Backup</button>':''}${state.mode==='cloud'?(isAdmin()?'<button class="btn ghost" data-action="share">⚙ Members & invites</button>':''):'<button class="btn ghost" data-action="configure">⚙ Sharing</button>'}`:(location.hostname.endsWith('.github.io')?'':'<button class="btn ghost" data-action="configure">⚙ Settings</button>')}</div></header>`}
 function renderFooter(){return `<footer>RFM Storage Board · Item pictures · Drag-and-drop inventory · Every change is logged ${state.mode==='cloud'?'in the shared database':'in this browser'}.</footer>`}
 function renderCatalog(){let items=state.data.items.filter(x=>(state.filter==='All'||x.category===state.filter)&&(x.name+' '+x.category+' '+x.detail).toLowerCase().includes(state.search.toLowerCase()));
 return items.length?items.map(x=>`<div class="item" draggable="true" data-drag-item="${esc(x.id)}" title="Drag into a storage location">${itemThumb(x)}<div class="item-main"><div class="item-name">${esc(x.name)}</div><div class="item-detail">${esc(x.detail||x.category)}</div></div>${isAdmin()?`<button class="photo-button" data-action="edit-image" data-item="${esc(x.id)}" title="${imageUrl(x)?'Change':'Add'} item photo" aria-label="Edit ${esc(x.name)} photo">📷</button>`:''}<button class="btn tiny" data-action="add-catalog" data-item="${esc(x.id)}" title="Add to storage">+</button></div>`).join(''):'<div class="empty">No catalog items match. Admins can create new item types.</div>'}
@@ -214,7 +214,7 @@ function shareModal(){
  const d=state.data;
  const rows=(d.members||[]).map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff17"><div><b>${esc(m.name)}</b> <span style="color:#ac9cc6;font-size:11px">${esc(m.role)}${m.active?'':' · revoked'}</span></div>${m.active&&m.user_id!==d.viewer.user_id?`<div class="flex"><button class="btn tiny" data-action="change-role" data-user="${esc(m.user_id)}" data-role="${m.role==='admin'?'member':'admin'}">${m.role==='admin'?'Demote':'Make admin'}</button><button class="btn tiny danger" data-action="revoke-member" data-user="${esc(m.user_id)}">Revoke</button></div>`:''}</div>`).join('');
  const invites=(d.invites||[]).map(inv=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:7px 0"><span style="font-size:12px">Unused ${esc(inv.role)} invite · expires ${esc(dateText(inv.expires_at))}</span><button class="btn tiny danger" data-action="cancel-invite" data-invite="${esc(inv.id)}">Cancel</button></div>`).join('');
- setModal(`<h2>Members & invitations</h2><p>Only admins can invite, remove or promote members. Each invitation is usable once and expires after 14 days.</p><form id="invite-form"><label class="field-label">Invite as</label><select class="field" name="role"><option value="member">Member</option><option value="admin">Admin</option></select>${modalActions('Create one-time invite')}</form><div style="margin-top:18px"><b style="font-size:13px">Members</b>${rows||'<div class="help">No members yet</div>'}</div>${invites?`<div style="margin-top:20px"><b style="font-size:13px">Unused invitations</b>${invites}</div>`:''}<div class="setup-card" style="margin-top:20px"><b>Publish with GitHub Pages</b><br>Download a connected <b>index.html</b> and upload it to your GitHub Pages repository.<br><br><button class="btn soft full" data-action="publish-file" type="button">↓ Download ready-to-publish website</button></div><div class="modal-actions"><button class="btn primary" data-action="close-modal">Done</button></div>`);
+ setModal(`<h2>Members & invitations</h2><p>Only admins can invite, remove or promote members. Each invitation is usable once and expires after 14 days.</p><form id="invite-form"><label class="field-label">Invite as</label><select class="field" name="role"><option value="member">Member</option><option value="admin">Admin</option></select>${modalActions('Create one-time invite')}</form><div style="margin-top:18px"><b style="font-size:13px">Members</b>${rows||'<div class="help">No members yet</div>'}</div>${invites?`<div style="margin-top:20px"><b style="font-size:13px">Unused invitations</b>${invites}</div>`:''}<div class="modal-actions"><button class="btn primary" data-action="close-modal">Done</button></div>`);
 }
 function showInvite(code,role,expiry){setModal(`<h2>One-time invitation ready</h2><p>Send this private code to your ${esc(role)}. It can be redeemed once before ${esc(dateText(expiry))}.</p><label class="field-label">Invitation code</label><input class="field" id="invite-code" readonly value="${esc(code)}"><div class="modal-actions"><button class="btn" data-action="copy-code">Copy code</button><button class="btn primary" data-action="share">Back to members</button></div><div class="tip">The code will not be displayed again after closing. Copy it now. Don't post it publicly.</div>`)}
 async function rpc(name, args){const {data,error}=await state.client.rpc('rfm_'+name,args);if(error)throw new Error(error.message||'Request failed');return data}
@@ -246,19 +246,13 @@ async function connectCloud(url,key){if(!window.supabase)throw Error('Cloud libr
 }
 async function refreshCloud(silent=false){if(!state.roomId)return;try{let data=await rpc('get_snapshot',{p_room:state.roomId});state.data=data;state.name=data.viewer?.name||state.name;if(!isAdmin()&&state.tab==='activity')state.tab='storages';state.lastSync=Date.now();if(!silent||!document.activeElement||!['item-search','log-search'].includes(document.activeElement.id)){render()}}catch(e){if(/membership is inactive|do not have access/i.test(e.message)){state.roomId=null;localStorage.removeItem('rfm_room_id');state.tab='storages';closeModal();render();toast('Your RFM access has been revoked.',true);return;}throw e;}}
 async function executeChange(action,item,from,to,qty){if(state.mode==='local')demoChange(action,item,from,to,qty);else await rpc('change_stock',{p_room:state.roomId,p_action:action,p_item:item,p_from:from||null,p_to:to||null,p_quantity:qty});if(state.mode==='cloud')await refreshCloud();else render()}
-function downloadWebsite(){
- const url=localStorage.getItem('rfm_url')||CONFIG.SUPABASE_URL;
- const key=localStorage.getItem('rfm_key')||CONFIG.SUPABASE_ANON_KEY;
- if(!url||!key){toast('Connect a shared database first',true);return}
- const clone=document.documentElement.cloneNode(true);
- ['app','modal-root','toast-root'].forEach(id=>{const node=clone.querySelector('#'+id);if(node)node.innerHTML=''});
- let html='<!doctype html>\n'+clone.outerHTML;
- const pattern=/const CONFIG = \{ SUPABASE_URL: '[^']*', SUPABASE_ANON_KEY: '[^']*' \};/;
- if(!pattern.test(html)){toast('Unable to package website',true);return}
- html=html.replace(pattern,`const CONFIG = { SUPABASE_URL: ${JSON.stringify(url)}, SUPABASE_ANON_KEY: ${JSON.stringify(key)} };`);
- download(html,'index.html','text/html');toast('Ready-to-publish index.html downloaded');
+async function getExport(){
+ if(!isAdmin())throw Error('Only admins can download backups');
+ // Refresh the snapshot so a revoked or demoted admin cannot export cached data.
+ const d=state.mode==='cloud'?await rpc('get_snapshot',{p_room:state.roomId}):state.data;
+ if(state.mode==='cloud'&&d?.viewer?.role!=='admin')throw Error('Only active admins can download backups');
+ return JSON.stringify({...d,exported_at:new Date().toISOString()},null,2);
 }
-function getExport(){const d={...state.data};if(!isAdmin()){delete d.logs;delete d.members;delete d.invites;}return JSON.stringify({...d,exported_at:new Date().toISOString()},null,2)}
 function download(content,name,mime){const b=new Blob([content],{type:mime});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
 const csv=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
 async function exportLog(){if(!isAdmin())throw Error('Admin permission required');let logs=state.data.logs;
@@ -280,7 +274,6 @@ function bind(){
  if(a==='revoke-member'){if(!isAdmin())throw Error('Admin only');const m=state.data.members.find(x=>x.user_id===el.dataset.user);if(!m)return;if(!confirm('Revoke '+m.name+' access? This immediately prevents future inventory changes.'))return;await rpc('revoke_member',{p_room:state.roomId,p_user:m.user_id});await refreshCloud();shareModal();toast('Member access revoked');return}
  if(a==='change-role'){if(!isAdmin())throw Error('Admin only');const m=state.data.members.find(x=>x.user_id===el.dataset.user);if(!m)return;if(!confirm('Change '+m.name+' to '+el.dataset.role+'?'))return;await rpc('set_member_role',{p_room:state.roomId,p_user:m.user_id,p_role:el.dataset.role});await refreshCloud();shareModal();toast('Role updated');return}
  if(a==='cancel-invite'){if(!isAdmin())throw Error('Admin only');if(!confirm('Cancel this unused invitation?'))return;await rpc('cancel_invite',{p_room:state.roomId,p_invite:el.dataset.invite});await refreshCloud();shareModal();toast('Invitation canceled');return}
- if(a==='publish-file'){downloadWebsite();return}
  if(a==='copy-code'){const input=$('#invite-code');if(!input)throw Error('No invitation code shown');await navigator.clipboard.writeText(input.value);toast('Personal invitation code copied');return}
  if(a==='filter'){state.filter=el.dataset.filter;render();return}
  if(a==='tab'){if(el.dataset.tab==='activity'&&!isAdmin())throw Error('Admin only');state.tab=el.dataset.tab;render();return}
@@ -290,7 +283,7 @@ function bind(){
  if(a==='add-one'){quantityModal({action:'add',itemId:el.dataset.item,toId:el.dataset.storageId});return}
  if(a==='remove-one'){quantityModal({action:'remove',itemId:el.dataset.item,fromId:el.dataset.storageId});return}
  if(a==='move-one'){quantityModal({action:'move',itemId:el.dataset.item,fromId:el.dataset.storageId});return}
- if(a==='export'){download(getExport(),'RFM-inventory-backup-'+new Date().toISOString().slice(0,10)+'.json','application/json');toast('Backup downloaded');return}
+ if(a==='export'){download(await getExport(),'RFM-inventory-backup-'+new Date().toISOString().slice(0,10)+'.json','application/json');toast('Backup downloaded');return}
  if(a==='export-log'){if(!isAdmin())throw Error('Admin only');await exportLog();return}
  if(a==='load-older'){if(!isAdmin())throw Error('Admin only');const batch=await rpc('get_activity',{p_room:state.roomId,p_limit:150,p_offset:state.data.logs.length});if(batch.length===0)toast('No older changes');else {state.data.logs.push(...batch);render()}return}
  if(a==='use-demo'){state.mode='local';state.roomId=null;state.data=JSON.parse(localStorage.getItem('rfm_local')||'null')||seedData();render();return}

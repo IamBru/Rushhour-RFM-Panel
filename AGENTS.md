@@ -34,6 +34,7 @@ These instructions apply to **this repository only** (`IamBru/Rushhour-RFM-Panel
 | Create new **master catalog** item types | No | Yes |
 | Upload, replace, or remove item photos | No | Yes |
 | Read or export activity logs | No | Yes |
+| Download inventory backups | No | Yes |
 | Invite, revoke, or manage members | No | Yes |
 | Assign/change admin roles | No | Yes |
 
