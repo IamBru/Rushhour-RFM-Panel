@@ -1,5 +1,37 @@
 # Rushhour-RFM-Panel
 
+## Admin inventory settings and deletion
+
+Apply `supabase/migrations/202611220003_admin_inventory_management.sql` once in
+Supabase SQL Editor after the storage-groups migration, then commit/push the
+frontend. Installing the migration does not delete data. It adds active-admin
+RPCs for item metadata, storage names/pictures, group names and confirmed deletion.
+The existing item-picture RPC and bucket permissions are unchanged.
+
+Catalog rows have Delete followed by Settings (admins only). Item deletion removes
+the catalog entry and its stock in every storage. Storage deletion removes its
+stock; group deletion removes child storages and their stock. Both retain catalog
+items. All three preserve prior history and record the actor, deleted identity
+and affected stock quantities. Previously uploaded item photo files may remain
+in the existing bucket; this migration does not delete bucket objects.
+
+Storage Settings replaces the header plus button. An **Add items** button inside
+each storage keeps item selection available to members and mobile users.
+Storage pictures are compressed to at most 160px and stored as bounded raster
+data URLs in `rfm_storages.image_data` (350,000-character database limit). They
+are returned through the membership-checked snapshot; no new bucket permissions
+are needed. More storage photos increase snapshot size. Item photo uploads remain
+separate from metadata updates; the UI reports if details saved but a photo failed.
+
+Quantity inputs start blank. Drop a stored item anywhere on the page outside a
+storage to choose a removal quantity, or on another storage to move it. Dropping
+outside the browser/page or canceling a drag does not remove anything.
+
+Run `node --test tests/inventory-management.test.cjs` for fixture-based frontend
+checks. These cover role visibility, confirmations, deletion scope, failures,
+editing and drag/drop routing. Live SQL/RLS and image-upload checks still require
+a test database/session; visual desktop/mobile checks require a connected browser.
+
 ## Storage groups
 
 The board's **New storage group** button creates a container for storage locations.

@@ -33,6 +33,7 @@ These instructions apply to **this repository only** (`IamBru/Rushhour-RFM-Panel
 | Use an existing catalog item in storage | Yes | Yes |
 | Create new **master catalog** item types | No | Yes |
 | Upload, replace, or remove item photos | No | Yes |
+| Edit/delete catalog items, storages or storage groups; change storage pictures | No | Yes |
 | Read or export activity logs | No | Yes |
 | Permanently clear activity logs after confirmation | No | Yes |
 | Download inventory backups | No | Yes |
@@ -50,6 +51,9 @@ For every privilege-sensitive change, verify both frontend visibility **and** ba
 - Preserve existing IDs, storage records, quantities, and event history except when an active admin explicitly confirms clearing activity logs through Settings. Avoid duplicate item creation or unintended negative quantities.
 - Activity history is **admin-only** and should identify the actor, action, item, relevant locations, quantity before/after where available, and timestamp. Preserve historical attribution even after member revocation.
 - Admin-only changes to catalog items/images should remain auditable.
+- Admins may explicitly delete a catalog item and all its stock, a storage and its stock, or a storage group with its child storages and stock after confirmation. These actions preserve prior activity history and add an attributed deletion record. Storage/group deletion must retain master catalog items. This is an explicit exception to preserving the deleted records above.
+- Item settings edit name, category, details and picture. Storage settings edit name and picture; group settings edit the group name. Members retain quantity controls and an Add items action inside each storage.
+- Dropping a stored item outside all storage cards on the page opens the removal quantity prompt; dropping on another storage opens Move. Catalog items dropped outside storages do nothing. Quantity fields start blank.
 
 ## Code and repository workflow
 
