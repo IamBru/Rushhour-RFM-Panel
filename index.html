@@ -105,7 +105,7 @@
     }
     /* Fixed background is blurred independently so text and controls stay sharp. */
     body{background:transparent;isolation:isolate}
-    body::before{content:"";position:fixed;inset:-24px;z-index:-1;pointer-events:none;background:linear-gradient(#0c0a15b8,#0c0a15e0),url('./assets/rfm-background.png') center / cover no-repeat;filter:blur(8px)}
+    body::before{content:"";position:fixed;inset:-24px;z-index:-1;pointer-events:none;background:linear-gradient(#0c0a15b8,#0c0a15e0),url('./rfm-background.png') center / cover no-repeat;filter:blur(8px)}
     .ranks-heading{text-align:center;margin:10px 0 24px}.ranks-heading h2{font-size:28px;margin:6px 0;color:var(--accent2)}
     .ranks-layout{display:grid;grid-template-columns:minmax(200px,1fr) minmax(0,2.4fr) minmax(220px,1fr);gap:18px;align-items:start}
     .ranks-info{padding:20px}.ranks-info h3{color:var(--accent2);margin:0 0 12px}.ranks-info h4{padding:8px;background:#7f51e229;margin:20px 0 8px;border-left:3px solid var(--accent)}
