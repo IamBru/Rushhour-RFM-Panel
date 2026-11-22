@@ -174,7 +174,7 @@ function render(){
 }
 function renderHeader(showActions){return `<header class="top"><div class="brand"><div class="mark">RFM</div><div><h1>RFM Panel</h1><div class="subtitle">${esc(state.data?.room?.name||'Simple shared inventory')}</div></div></div>
  <div class="top-actions"><span class="pill"><i class="dot ${state.mode==='local'?'local':''}"></i>${state.mode==='cloud'?'RFM connected · syncs every 5s':'Local demo'}</span>
- ${showActions?`<button class="btn ghost" data-action="profile">👤 ${esc(currentName())}</button><button class="btn ghost" data-action="export">↓ Backup</button>${state.mode==='cloud'?(isAdmin()?'<button class="btn ghost" data-action="share">⚙ Members & invites</button>':''):'<button class="btn ghost" data-action="configure">⚙ Sharing</button>'}`:(state.mode==='cloud'?'':'<button class="btn ghost" data-action="configure">⚙ Settings</button>')}</div></header>`}
+ ${showActions?`<button class="btn ghost" data-action="profile">👤 ${esc(currentName())}</button><button class="btn ghost" data-action="export">↓ Backup</button>${state.mode==='cloud'?(isAdmin()?'<button class="btn ghost" data-action="share">⚙ Members & invites</button>':''):'<button class="btn ghost" data-action="configure">⚙ Sharing</button>'}`:(location.hostname.endsWith('.github.io')?'':'<button class="btn ghost" data-action="configure">⚙ Settings</button>')}</div></header>`}
 function renderFooter(){return `<footer>RFM Storage Board · Item pictures · Drag-and-drop inventory · Every change is logged ${state.mode==='cloud'?'in the shared database':'in this browser'}.</footer>`}
 function renderCatalog(){let items=state.data.items.filter(x=>(state.filter==='All'||x.category===state.filter)&&(x.name+' '+x.category+' '+x.detail).toLowerCase().includes(state.search.toLowerCase()));
 return items.length?items.map(x=>`<div class="item" draggable="true" data-drag-item="${esc(x.id)}" title="Drag into a storage location">${itemThumb(x)}<div class="item-main"><div class="item-name">${esc(x.name)}</div><div class="item-detail">${esc(x.detail||x.category)}</div></div>${isAdmin()?`<button class="photo-button" data-action="edit-image" data-item="${esc(x.id)}" title="${imageUrl(x)?'Change':'Add'} item photo" aria-label="Edit ${esc(x.name)} photo">📷</button>`:''}<button class="btn tiny" data-action="add-catalog" data-item="${esc(x.id)}" title="Add to storage">+</button></div>`).join(''):'<div class="empty">No catalog items match. Admins can create new item types.</div>'}
@@ -188,6 +188,9 @@ function renderGroupGate(){return `<div class="group-panel join-only">
  <div class="join-card"><form id="join-room-form"><label class="field-label" for="rfm-join-name">Your display name</label><input class="field" id="rfm-join-name" name="display_name" maxlength="40" value="${esc(state.name)}" placeholder="e.g. Billy Jones" autocomplete="nickname" required>
  <label class="field-label" for="rfm-join-code">One-time invitation code</label><input class="field" id="rfm-join-code" name="code" placeholder="Paste code from an RFM admin" autocomplete="off" spellcheck="false" required><button class="btn primary full" style="margin-top:20px" type="submit">Join RFM Panel</button></form><div class="join-assist">Don't have an invitation? Ask an RFM admin for a personal code. No email or password needed.</div></div>
  </div>`}
+function setModal(html){$('#modal-root').innerHTML=`<div class="overlay" data-action="close-modal-overlay"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;setTimeout(()=>$('#modal-root input:not([type=hidden])')?.focus(),0)}
+function closeModal(){$('#modal-root').innerHTML=''}
+function modalActions(label='Save'){return `<div class="modal-actions"><button class="btn" type="button" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">${esc(label)}</button></div>`}
 function quantityModal({action,itemId,fromId='',toId=''}){const d=state.data,item=d.items.find(x=>x.id===itemId);if(!item)return;const max=fromId?stockQty(itemId,fromId):1000000;const options=d.storages.filter(x=>action!=='move'||x.id!==fromId).map(x=>`<option value="${esc(x.id)}" ${x.id===toId?'selected':''}>${esc(x.name)}</option>`).join('');if((action==='add'||action==='move')&&!options){toast('Add another storage first',true);return}
  const label=action==='add'?'Add to storage':action==='move'?'Move between storages':'Remove from inventory';
  state.modal={kind:'quantity',action,itemId,fromId,toId};setModal(`<h2>${label}</h2><p><b>${esc(item.name)}</b> ${fromId?`· ${max} available in ${esc(d.storages.find(x=>x.id===fromId)?.name)}`:'· Choose where to store it'}</p><form id="quantity-form">
@@ -219,10 +222,29 @@ async function connectCloud(url,key){if(!window.supabase)throw Error('Cloud libr
  const client=window.supabase.createClient(url.trim().replace(/\/$/,''),key.trim(),{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
  let {data:{session},error}=await client.auth.getSession();if(error)throw error;if(!session){const res=await client.auth.signInAnonymously();if(res.error)throw new Error(res.error.message+' — enable Anonymous Sign-ins in Supabase Authentication.');}
  state.client=client;state.mode='cloud';state.roomId=localStorage.getItem('rfm_room_id')||null;
- if(state.roomId){try{await refreshCloud();}catch(e){state.roomId=null;localStorage.removeItem('rfm_room_id');toast('Your group access was removed or cannot be verified. Ask an admin for a fresh invitation.',true)}}
- if(!state.roomId)render();window.clearInterval(window._syncInterval);window._syncInterval=setInterval(()=>{if(state.mode==='cloud'&&state.roomId&&!state.busy)refreshCloud(true).catch(()=>{})},5000);
+ // A cached room ID is only a hint. The server always checks current membership.
+ if(state.roomId){
+  try{await refreshCloud();}
+  catch(e){
+   // On a temporary network/API error, keep the cached room ID for a later retry.
+   throw new Error('Could not verify your RFM membership right now: '+e.message);
+  }
+ }
+ // Fresh browser or an old "leave view" action: recover the active membership
+ // associated with the existing anonymous Supabase sign-in, without an invite.
+ if(!state.roomId){
+  const recovered=await rpc('restore_membership',{});
+  if(recovered){
+   state.roomId=recovered;
+   localStorage.setItem('rfm_room_id',recovered);
+   await refreshCloud();
+  }
+ }
+ if(!state.roomId)render();
+ window.clearInterval(window._syncInterval);
+ window._syncInterval=setInterval(()=>{if(state.mode==='cloud'&&state.roomId&&!state.busy)refreshCloud(true).catch(()=>{})},5000);
 }
-async function refreshCloud(silent=false){if(!state.roomId)return;try{let data=await rpc('get_snapshot',{p_room:state.roomId});state.data=data;state.name=data.viewer?.name||state.name;if(!isAdmin()&&state.tab==='activity')state.tab='storages';state.lastSync=Date.now();if(!silent||!document.activeElement||!['item-search','log-search'].includes(document.activeElement.id)){render()}}catch(e){if(/membership is inactive|do not have access/i.test(e.message)){state.roomId=null;localStorage.removeItem('rfm_room_id');state.tab='storages';closeModal();render();toast('Your access to this group has been revoked.',true);return;}throw e;}}
+async function refreshCloud(silent=false){if(!state.roomId)return;try{let data=await rpc('get_snapshot',{p_room:state.roomId});state.data=data;state.name=data.viewer?.name||state.name;if(!isAdmin()&&state.tab==='activity')state.tab='storages';state.lastSync=Date.now();if(!silent||!document.activeElement||!['item-search','log-search'].includes(document.activeElement.id)){render()}}catch(e){if(/membership is inactive|do not have access/i.test(e.message)){state.roomId=null;localStorage.removeItem('rfm_room_id');state.tab='storages';closeModal();render();toast('Your RFM access has been revoked.',true);return;}throw e;}}
 async function executeChange(action,item,from,to,qty){if(state.mode==='local')demoChange(action,item,from,to,qty);else await rpc('change_stock',{p_room:state.roomId,p_action:action,p_item:item,p_from:from||null,p_to:to||null,p_quantity:qty});if(state.mode==='cloud')await refreshCloud();else render()}
 function downloadWebsite(){
  const url=localStorage.getItem('rfm_url')||CONFIG.SUPABASE_URL;
