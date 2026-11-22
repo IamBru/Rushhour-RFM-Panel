@@ -23,5 +23,6 @@ and that inventory, memberships and other groups' history stay unchanged.
 Database execution and live-session checks have not been run locally.
 
 Then deploy the frontend through the normal GitHub Desktop commit/push workflow.
-No production changes have been made by Codex. The read-only
-`supabase/inspect_log_schema.sql` remains available for future schema inspection.
+The owner confirmed applying the migration, deploying the frontend, and checking
+that the database contained zero activity logs after clearing. Member and revoked-user
+authorization checks have not been independently verified against production.
