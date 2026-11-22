@@ -211,3 +211,30 @@ test('inline category creation selects the category without replacing the item f
  assert.equal(fields.hidden,true);assert.equal(form.draftName,'Bandage');assert.equal(form.selectedFile.name,'picture.png');
  assert.equal(button.disabled,false);assert(f.run('categoryNames()').includes('Health'));
 });
+test('category dropdown has Create first, no placeholder, and preserves existing selection',()=>{
+ const f=fixture();const markup=f.run("categorySelect('Shotguns',true)");
+ assert(!markup.includes('Choose category'));assert(markup.indexOf('data-create-category')<markup.indexOf('value="Shotguns"'));
+ assert(markup.includes('value="Shotguns" selected'));
+ assert(!f.run('renderHeader(true)').includes('Settings</button>}'));
+});
+test('Item Prices is separate from storage and members have no editing controls',async()=>{
+ const f=fixture();await f.run('loadPrices()');
+ f.run("state.priceBoard.vendors.push({id:'v',name:'Pawn Shop'});state.priceBoard.entries.push({id:'p',vendor_id:'v',name:'Telescope',quality:'Epic/Lego',rolls:'160/252'});state.section='prices';render()");
+ const markup=f.nodes['#app'].innerHTML;
+ assert(markup.includes('Pawn Shop'));assert(markup.includes('160/252'));assert(!markup.includes('Master item catalog'));
+ assert(markup.includes('price-edit'));
+ f.run("state.mode='cloud';state.data.viewer={role:'member'}");
+ assert(!f.run('renderPrices()').includes('price-edit'));assert(!f.run('renderPrices()').includes('price-delete'));
+ assert.throws(()=>f.run("priceEditModal('vendor','v')"),/Only admins/);
+ await assert.rejects(f.run("deletePrice('vendor','v')"),/Only admins/);
+});
+test('vendor and entry editing/deletion leaves storage data unchanged',async()=>{
+ const f=fixture();let id=0;f.ctx.crypto={randomUUID:()=>`price-${++id}`};
+ const before=f.run('JSON.stringify({items:state.data.items,stock:state.data.stock,logs:state.data.logs})');
+ await f.run('loadPrices()');f.run("priceEditModal('vendor')");
+ f.ctx.values={name:'Fence'};await f.run('savePrice({get:k=>values[k]})');
+ f.run("priceEditModal('entry','','price-1')");f.ctx.values={name:'Telescope',quality:'Epic/Lego',rolls:'160/252'};
+ await f.run('savePrice({get:k=>values[k]})');assert.equal(f.run('state.priceBoard.entries.length'),1);
+ await f.run("deletePrice('vendor','price-1')");assert.equal(f.run('state.priceBoard.entries.length'),0);
+ assert.equal(f.run('JSON.stringify({items:state.data.items,stock:state.data.stock,logs:state.data.logs})'),before);
+});

@@ -83,6 +83,8 @@ For every privilege-sensitive change, verify both frontend visibility **and** ba
 
 ## Future panel modules
 
+- Top-level sections are Storage and Item Prices within the same RFM membership. Item Prices lists separate vendors with Item, Quality and Rolls columns, including slash-separated variants. Active members can read; only active admins may create, edit or delete vendors and prices. Vendor data and its audit records are independent of Storage catalog, quantities and history.
+
 Add new tabs as distinct sections of the **same RFM Panel** and reuse existing membership/role checks. Keep Storage's catalog, stock, and activity history independent of unrelated modules unless specifically requested. If a larger reorganization becomes appropriate, propose a migration plan first and keep old public functionality working throughout the transition.
 
 ## Maintaining this file

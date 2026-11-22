@@ -1,5 +1,25 @@
 # Rushhour-RFM-Panel
 
+## Storage and Item Prices tabs
+
+Apply `supabase/migrations/202611220007_item_prices.sql` once before deploying
+this frontend. Existing storage functionality sits under **Storage**. **Item
+Prices** lists vendors separately, with Item, Quality and Rolls columns (including
+values such as `160/252`). Admins create/edit/delete vendors and entries; active
+members can only view. Vendor lists start empty; no vendor or screenshot data is
+assumed or seeded. Deleting a vendor deletes its price entries after confirmation.
+
+The new tables have RLS and no direct browser privileges. Read RPCs check active
+membership; mutation RPCs check active admin status and enforce room-scoped IDs.
+Changes are recorded in a separate `rfm_price_activity` table, not Storage history.
+The migration does not change inventory or existing membership. Price list scroll
+positions survive automatic refreshes. No new login or RFM group is required.
+
+Category dropdowns no longer include Choose category. Create category is first
+in the admin creation dropdown; an existing category is selected by default.
+The extra header brace has been removed. Frontend fixture tests cover the new
+module; database execution and desktop/mobile visual verification remain pending.
+
 ## Personal display size
 
 Settings is available to all active members. Display controls scale the interface
