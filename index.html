@@ -51,6 +51,49 @@
     .join-only .join-card{padding:20px 23px}
     .join-assist{color:#a69bbd;line-height:1.6;text-align:center;font-size:12px;margin-top:18px}
     @media(max-width:600px){.group-panel.join-only{padding:20px}.join-only .join-card{padding:15px}}
+    /* Use available content width so browser-local interface scaling also reflows layouts. */
+    .shell{container:panel-layout / inline-size}
+    .dashboard>*,.panel,.brand>div,.storage-header>.flex>div,.storage-group-head>div,.board-head>div{min-width:0}
+    .storages{grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
+    .brand h1,.subtitle,.title,.help,.item-detail,.act-title,.modal,.pill,.guide{overflow-wrap:anywhere}
+    .field,.search{min-width:0;max-width:100%}
+    .stock-qty,.stock-buttons{flex-shrink:0}
+    .storage-header,.entity-actions{flex-wrap:wrap}
+    .price-table{min-width:420px}.price-table-wrap{max-width:100%}
+    .member-row{flex-wrap:wrap}.member-row>div{min-width:0}
+    .modal{container:dialog-layout / inline-size}
+    .overlay{align-items:safe center;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+    @container panel-layout (max-width:900px){
+      .dashboard{grid-template-columns:280px minmax(0,1fr);gap:16px}
+      .statbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+    @container panel-layout (max-width:720px){
+      .dashboard{grid-template-columns:minmax(0,1fr)}
+      .catalog{position:static}.catalog-items{max-height:300px}
+      .top-actions{width:100%}.panel-tabs{width:100%}.panel-tabs .tab{flex:1}
+      .two{grid-template-columns:minmax(0,1fr)}
+      .notice{align-items:flex-start;flex-direction:column}
+    }
+    @container panel-layout (max-width:440px){
+      .storage-group{padding:10px}.storage-header{padding:12px}.storage-group-head{gap:8px}
+      .stock-row{flex-wrap:wrap;gap:8px}.stock-name{flex-basis:calc(100% - 48px);white-space:normal}
+      .stock-buttons{margin-left:auto}.item{flex-wrap:wrap;padding:8px}.item-main{flex-basis:calc(100% - 60px)}
+      .item .entity-actions{margin-left:auto}.item-name{white-space:normal}
+      .top-actions>.btn{flex:1}.top-actions>.pill{width:100%}
+      .activity-row{padding:12px;gap:8px}.price-table th,.price-table td{padding:10px}
+      .stat{padding:12px}.statbar{gap:8px}.panel-head{padding:14px}
+    }
+    @container dialog-layout (max-width:340px){
+      .modal-actions>.btn{flex:1 1 100%}.category-setting{flex-wrap:wrap}
+      .member-row>.flex{width:100%}.field,.search{font-size:16px}
+    }
+    @media (max-width:480px){.shell{padding:12px 10px 24px}.modal{padding:16px;border-radius:14px}.field,.search{font-size:16px}}
+    @media (max-height:650px){.catalog{position:static}}
+    @media (pointer:coarse){
+      .btn,.tab,.chip,.photo-button,.stock-buttons button{min-height:44px}
+      .photo-button,.btn.icon,.stock-buttons button{min-width:44px}
+      .stock-row,.item{flex-wrap:wrap}.stock-buttons{margin-left:auto}
+    }
   </style>
 </head>
 <body><main id="app" class="shell"></main><div id="modal-root"></div><div id="toast-root"></div>
@@ -283,7 +326,7 @@ function deletionDescription(l){
  return `deleted ${esc(kind)} <strong>${esc(name||kind)}</strong>${affected.length?`<div class="help">${affected.map(x=>`${esc(x.before??x.quantity)} &times; ${esc(x.item||'item')} from ${esc(x.storage||'storage')}`).join('<br>')}</div>`:'<div class="help">No stock to remove.</div>'}`;
 }
 function activityDescription(l){if(['item_deleted','storage_deleted','storage_group_deleted'].includes(l.action))return deletionDescription(l);const name=esc(l.item_name),q=esc(l.quantity);switch(l.action){case 'add':return `added <strong>${q} × ${name}</strong> to <strong>${esc(l.to_name)}</strong>`;case 'remove':return `removed <strong>${q} × ${name}</strong> from <strong>${esc(l.from_name)}</strong>`;case 'move':return `moved <strong>${q} × ${name}</strong> from <strong>${esc(l.from_name)}</strong> to <strong>${esc(l.to_name)}</strong>`;case 'image_updated':return `added or changed the photo for <strong>${name}</strong>`;case 'image_removed':return `removed the photo for <strong>${name}</strong>`;case 'item_created':return `created item <strong>${name}</strong>`;case 'storage_group_created':return `created storage group <strong>${esc(l.to_name)}</strong>`;case 'storage_created':return `created storage <strong>${esc(l.to_name)}</strong>`;case 'member_joined':return 'joined the group';case 'room_created':return 'created the group';default:return esc(l.detail||l.action)}}
-function renderActivity(){const arr=state.data.logs.filter(l=>(l.actor_name+' '+l.item_name+' '+l.from_name+' '+l.to_name+' '+l.action+' '+(l.detail||'')).toLowerCase().includes(state.logSearch.toLowerCase()));return `<section class="panel activity"><div class="activity-tools"><input class="search" style="flex:1;min-width:190px" id="log-search" placeholder="Search by person, item or storage..." value="${esc(state.logSearch)}" aria-label="Search activity"></div><div class="activity-list" data-scroll-key="activity">${arr.length?arr.map(l=>`<div class="activity-row" data-scroll-anchor="log-${esc(l.id)}"><div class="bubble">${esc((l.actor_name||'?').slice(0,1).toUpperCase())}</div><div class="act-body"><div class="act-title"><strong>${esc(l.actor_name)}</strong> ${activityDescription(l)} ${['add','remove','move'].includes(l.action)?`<span class="act-symbol ${l.action==='add'?'plus':l.action==='remove'?'minus':'move'}">${l.action.toUpperCase()}</span>`:''}</div><div class="act-time">${dateText(l.created_at)}</div></div></div>`).join(''):'<div class="empty" style="margin:18px">No activity found.</div>'}</div>${state.mode==='cloud'&&state.data.logs.length>=150?`<div class="catalog-foot"><button class="btn full" data-action="load-older">Load older changes</button></div>`:''}</section>`}
+function renderActivity(){const arr=state.data.logs.filter(l=>(l.actor_name+' '+l.item_name+' '+l.from_name+' '+l.to_name+' '+l.action+' '+(l.detail||'')).toLowerCase().includes(state.logSearch.toLowerCase()));return `<section class="panel activity"><div class="activity-tools"><input class="search" style="flex:1;min-width:0" id="log-search" placeholder="Search by person, item or storage..." value="${esc(state.logSearch)}" aria-label="Search activity"></div><div class="activity-list" data-scroll-key="activity">${arr.length?arr.map(l=>`<div class="activity-row" data-scroll-anchor="log-${esc(l.id)}"><div class="bubble">${esc((l.actor_name||'?').slice(0,1).toUpperCase())}</div><div class="act-body"><div class="act-title"><strong>${esc(l.actor_name)}</strong> ${activityDescription(l)} ${['add','remove','move'].includes(l.action)?`<span class="act-symbol ${l.action==='add'?'plus':l.action==='remove'?'minus':'move'}">${l.action.toUpperCase()}</span>`:''}</div><div class="act-time">${dateText(l.created_at)}</div></div></div>`).join(''):'<div class="empty" style="margin:18px">No activity found.</div>'}</div>${state.mode==='cloud'&&state.data.logs.length>=150?`<div class="catalog-foot"><button class="btn full" data-action="load-older">Load older changes</button></div>`:''}</section>`}
 function renderGroupGate(){return `<div class="group-panel join-only">
  <div class="join-heading"><div class="join-emblem">RFM</div><div class="join-kicker">INVITE-ONLY ACCESS</div><h2>Join RFM</h2><p class="help">Welcome to the RFM Panel. Enter your personal invitation code to access the shared storage board.</p></div>
  <div class="join-card"><form id="join-room-form"><label class="field-label" for="rfm-join-name">Your display name</label><input class="field" id="rfm-join-name" name="display_name" maxlength="40" value="${esc(state.name)}" placeholder="e.g. Billy Jones" autocomplete="nickname" required>
@@ -473,7 +516,7 @@ function shareModal(){
  if(state.mode==='cloud'&&(!state.roomId||!state.data?.viewer))throw Error('Active membership required');
  if(!isAdmin()){setModal(`<h2>Settings</h2>${displaySettings()}<div class="modal-actions"><button class="btn primary" data-action="close-modal">Done</button></div>`);return;}
  const d=state.data;
- const rows=(d.members||[]).map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff17"><div><b>${esc(m.name)}</b> <span style="color:#ac9cc6;font-size:11px">${esc(m.role)}${m.active?'':' · revoked'}</span></div>${m.active&&m.user_id!==d.viewer.user_id?`<div class="flex"><button class="btn tiny" data-action="change-role" data-user="${esc(m.user_id)}" data-role="${m.role==='admin'?'member':'admin'}">${m.role==='admin'?'Demote':'Make admin'}</button><button class="btn tiny danger" data-action="revoke-member" data-user="${esc(m.user_id)}">Revoke</button></div>`:''}</div>`).join('');
+ const rows=(d.members||[]).map(m=>`<div class="member-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff17"><div><b>${esc(m.name)}</b> <span style="color:#ac9cc6;font-size:11px">${esc(m.role)}${m.active?'':' · revoked'}</span></div>${m.active&&m.user_id!==d.viewer.user_id?`<div class="flex"><button class="btn tiny" data-action="change-role" data-user="${esc(m.user_id)}" data-role="${m.role==='admin'?'member':'admin'}">${m.role==='admin'?'Demote':'Make admin'}</button><button class="btn tiny danger" data-action="revoke-member" data-user="${esc(m.user_id)}">Revoke</button></div>`:''}</div>`).join('');
  const invites=(d.invites||[]).map(inv=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:7px 0"><span style="font-size:12px">Unused ${esc(inv.role)} invite · expires ${esc(dateText(inv.expires_at))}</span><button class="btn tiny danger" data-action="cancel-invite" data-invite="${esc(inv.id)}">Cancel</button></div>`).join('');
  setModal(`<h2>Settings</h2>${displaySettings()}${catalogSettings()}<h3>Members & invitations</h3><p>Only admins can invite, remove or promote members. Each invitation is usable once and expires after 14 days.</p><form id="invite-form"><label class="field-label">Invite as</label><select class="field" name="role"><option value="member">Member</option><option value="admin">Admin</option></select>${modalActions('Create one-time invite')}</form><div style="margin-top:18px"><b style="font-size:13px">Members</b>${rows||'<div class="help">No members yet</div>'}</div>${invites?`<div style="margin-top:20px"><b style="font-size:13px">Unused invitations</b>${invites}</div>`:''}${state.mode==='cloud'?`<div class="setup-card" style="margin-top:20px"><b>Activity history</b><p>Permanently delete all activity logs for this RFM group. Inventory, catalog items and memberships stay unchanged. Export the activity log first if you want to keep a copy.</p><button class="btn danger full" data-action="clear-logs" type="button">Clear database logs</button></div>`:''}<div class="modal-actions"><button class="btn primary" data-action="close-modal">Done</button></div>`);
 }
