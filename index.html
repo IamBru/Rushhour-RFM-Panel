@@ -102,6 +102,22 @@
       .photo-button,.btn.icon,.stock-buttons button{min-width:44px}
       .stock-row,.item{flex-wrap:wrap}.stock-buttons{margin-left:auto}
     }
+    /* Fixed background is blurred independently so text and controls stay sharp. */
+    body{background:transparent;isolation:isolate}
+    body::before{content:"";position:fixed;inset:-24px;z-index:-1;pointer-events:none;background:linear-gradient(#0c0a15b8,#0c0a15e0),url('./assets/rfm-background.png') center / cover no-repeat;filter:blur(8px)}
+    .ranks-heading{text-align:center;margin:10px 0 24px}.ranks-heading h2{font-size:28px;margin:6px 0;color:var(--accent2)}
+    .ranks-layout{display:grid;grid-template-columns:minmax(200px,1fr) minmax(0,2.4fr) minmax(220px,1fr);gap:18px;align-items:start}
+    .ranks-info{padding:20px}.ranks-info h3{color:var(--accent2);margin:0 0 12px}.ranks-info h4{padding:8px;background:#7f51e229;margin:20px 0 8px;border-left:3px solid var(--accent)}
+    .ranks-info ol,.ranks-info ul{padding-left:22px;margin-bottom:24px}.ranks-info li{padding:6px 0;overflow-wrap:anywhere}
+    .rank-chart{padding:24px 14px;display:flex;flex-direction:column;align-items:center;gap:20px}
+    .rank-card{position:relative;border:2px solid var(--accent);border-radius:10px;background:#171327;padding:12px 10px;text-align:center;width:100%;max-width:260px;overflow-wrap:anywhere}
+    .rank-card span{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+    .rank-chart>.rank-card:not(:first-child)::before,.rank-crew>.rank-card:not(:first-child)::before{content:"";position:absolute;height:20px;width:2px;background:var(--accent);bottom:100%;left:50%}
+    .rank-pair,.rank-crews{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%}.rank-crews{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .rank-crew{display:flex;flex-direction:column;align-items:center;gap:20px;min-width:0}.rank-crew strong{font-size:13px}
+    .rank-sub{border:1px dashed var(--accent2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--accent2);text-align:center;overflow-wrap:anywhere;max-width:100%}
+    @container panel-layout (max-width:1100px){.ranks-layout{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}.ranks-layout>aside{grid-column:1 / -1}}
+    @container panel-layout (max-width:720px){.ranks-layout{grid-template-columns:minmax(0,1fr)}.rank-chart{grid-row:1}.rank-crews{gap:6px}.rank-card{padding:10px 5px}.rank-crew strong{font-size:11px}}
   </style>
 </head>
 <body><main id="app" class="shell"></main><div id="modal-root"></div><div id="toast-root"></div>
@@ -226,6 +242,7 @@ function renderContent(){
  if(state.mode==='cloud' && !state.roomId){app.innerHTML=renderHeader(false)+renderGroupGate()+renderFooter();return}
  if(state.mode==='local' && location.hostname.endsWith('.github.io')){app.innerHTML=renderHeader(false)+`<div class="group-panel join-only"><h2>Connecting to RFM…</h2><p class="help">Your shared panel is loading. If this message stays visible, refresh the page or contact an admin.</p></div>`+renderFooter();return}
  if(state.section==='activity'){if(!isAdmin())state.section='storage';else{app.innerHTML=renderHeader(true)+renderSections()+'<div class="board-head"><h2 class="title">Activity Logs</h2><button class="btn soft" data-action="export-log">Export log CSV</button></div>'+renderActivity()+renderFooter();return}}
+ if(state.section==='ranks'){app.innerHTML=renderHeader(true)+renderSections()+renderRanks()+renderFooter();return}
  if(state.section==='prices'){app.innerHTML=renderHeader(true)+renderSections()+renderPrices()+renderFooter();return}
  const t=d.stock.reduce((s,x)=>s+x.quantity,0);const populated=d.stock.filter(x=>x.quantity>0).length;
  app.innerHTML=`${renderHeader(true)}${renderSections()}
@@ -252,7 +269,18 @@ function renderContent(){
    </section>
  </div>${renderFooter()}`;
 }
-function renderSections(){return `<nav class="tabs panel-tabs" aria-label="Panel sections"><button class="tab ${state.section==='storage'?'active':''}" data-action="section" data-section="storage">Storage</button><button class="tab ${state.section==='prices'?'active':''}" data-action="section" data-section="prices">Item Prices</button>${isAdmin()?`<button class="tab ${state.section==='activity'?'active':''}" data-action="section" data-section="activity">Activity Logs</button>`:''}</nav>`}
+function renderSections(){return `<nav class="tabs panel-tabs" aria-label="Panel sections"><button class="tab ${state.section==='storage'?'active':''}" data-action="section" data-section="storage">Storage</button><button class="tab ${state.section==='prices'?'active':''}" data-action="section" data-section="prices">Item Prices</button><button class="tab ${state.section==='ranks'?'active':''}" data-action="section" data-section="ranks">Ranks</button>${isAdmin()?`<button class="tab ${state.section==='activity'?'active':''}" data-action="section" data-section="activity">Activity Logs</button>`:''}</nav>`}
+function renderRanks(){
+ const ranks=['Boss (Don / Godfather)','Underboss','Consigliere','Crew Chief','Caporegime (Capo)','Lieutenant (Tenente)','Soldier (Soldato)','Associate','Prospect'];
+ const card=(name,detail='')=>`<div class="rank-card"><strong>${name}</strong>${detail?`<span>${detail}</span>`:''}</div>`;
+ return `<header class="ranks-heading"><p class="subtitle">RICARDO MAFIA FAMILY</p><h2>Family ranks</h2></header><div class="ranks-layout">
+ <section class="panel ranks-info"><h3>Rank order</h3><ol>${ranks.map(r=>`<li>${r}</li>`).join('')}</ol></section>
+ <section class="panel rank-chart" aria-label="Family command hierarchy">
+ ${card('Boss','Don / Godfather')}<div class="rank-pair">${card('Consigliere')}${card('Underboss')}</div>${card('Crew Chief')}
+ <div class="rank-crews">${[1,2,3].map(()=>`<div class="rank-crew">${card('Caporegime','Capo')}${card('Lieutenant','Tenente')}<div class="rank-sub">Coordinator</div></div>`).join('')}</div>
+ ${card('Soldier','Soldato')}<div class="rank-sub">Hustler</div>${card('Associate')}${card('Prospect','Recruit')}
+ </section><aside class="panel ranks-info"><h3>Silent promotions</h3><p class="help">By rank eligibility</p><h4>Lieutenant (LT)</h4><ul><li>Coordinator</li><li>Family Representative</li><li>Advisor</li><li>Treasurer</li></ul><h4>Soldier (Soldato)</h4><ul><li>Hustler</li><li>Enforcer</li><li>Fixer</li><li>Recruiter</li><li>Loyalist</li><li>Veteran</li></ul><h3>Legend</h3><p class="help">Solid purple boxes: official ranks.<br>Dashed boxes: silent promotions / sub ranks.</p></aside></div>`;
+}
 function renderPrices(){
  const board=state.priceBoard;
  return `<div class="board-head"><div><h2 class="title">Item Prices</h2><p class="help">Items sold to vendors, separate from storage inventory.</p></div>${isAdmin()&&board?'<button class="btn soft" data-action="price-edit" data-kind="vendor">+ New vendor</button>':''}</div>${state.priceError?`<div class="empty">${esc(state.priceError)}<button class="btn" data-action="reload-prices">Retry</button></div>`:''}${!board?'<div class="empty">Vendor prices are not loaded yet.</div>':`<div class="price-vendors">${board.vendors.map(v=>`<section class="panel"><div class="storage-group-head price-head"><h2 class="storage-group-title">${esc(v.name)}</h2>${isAdmin()?`<div class="flex"><button class="btn soft" data-action="price-edit" data-kind="entry" data-vendor="${esc(v.id)}">+ Add item</button>${priceControls('vendor',v.id)}</div>`:''}</div><div class="price-table-wrap" data-scroll-key="vendor-${esc(v.id)}"><table class="price-table"><thead><tr><th>Item</th><th>Quality</th><th>Rolls</th>${isAdmin()?'<th>Actions</th>':''}</tr></thead><tbody>${board.entries.filter(x=>x.vendor_id===v.id).map(x=>`<tr data-scroll-anchor="price-${esc(x.id)}"><td>${esc(x.name)}</td><td>${esc(x.quality)}</td><td>${esc(x.rolls)}</td>${isAdmin()?`<td>${priceControls('entry',x.id)}</td>`:''}</tr>`).join('')||`<tr><td colspan="${isAdmin()?4:3}" class="help">No items listed for this vendor yet.</td></tr>`}</tbody></table></div></section>`).join('')||'<div class="empty">No vendors yet. An admin can add Pawn Shop, Fence, or other vendors.</div>'}</div>`}`;
@@ -291,7 +319,7 @@ async function deletePrice(kind,id){
 function renderHeader(showActions){return `<header class="top"><div class="brand"><div class="mark${state.data?.room?.logo_data?' custom-logo':''}">${state.data?.room?.logo_data?`<img src="${esc(state.data.room.logo_data)}" alt="RFM logo">`:'RFM'}</div><div><h1>RFM Panel</h1><div class="subtitle">${esc(state.data?.room?.name||'Simple shared inventory')}</div></div></div>
  <div class="top-actions"><span class="pill"><i class="dot ${state.mode==='local'?'local':''}"></i>${state.mode==='cloud'?'RFM connected · syncs every 5s':'Local demo'}</span>
  ${showActions?`<button class="btn ghost" data-action="profile">👤 ${esc(currentName())}</button>${isAdmin()?'<button class="btn ghost" data-action="export">↓ Backup</button>':''}<button class="btn ghost" data-action="share">&#9881; Settings</button>`:(location.hostname.endsWith('.github.io')?'':'<button class="btn ghost" data-action="configure">⚙ Settings</button>')}</div></header>`}
-function renderFooter(){if(state.section==='prices')return '<footer>RFM Panel ? Item Prices ? Vendor sale reference</footer>';return `<footer>RFM Panel · Item pictures · Drag-and-drop inventory · Every change is logged ${state.mode==='cloud'?'in the shared database':'in this browser'}.</footer>`}
+function renderFooter(){if(state.section==='ranks')return '<footer>RFM ? Ricardo Mafia Family ? Rank hierarchy</footer>';if(state.section==='prices')return '<footer>RFM Panel ? Item Prices ? Vendor sale reference</footer>';return `<footer>RFM Panel · Item pictures · Drag-and-drop inventory · Every change is logged ${state.mode==='cloud'?'in the shared database':'in this browser'}.</footer>`}
 function actionIcon(kind){return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${kind==='delete'?'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>':'<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>'}</svg>`}
 function adminControls(kind,id,name){return isAdmin()?`<div class="entity-actions"><button type="button" class="photo-button danger" data-action="delete-entity" data-kind="${kind}" data-id="${esc(id)}" title="Delete ${esc(name)}" aria-label="Delete ${esc(name)}">${actionIcon('delete')}</button><button type="button" class="photo-button" data-action="edit-entity" data-kind="${kind}" data-id="${esc(id)}" title="Edit ${esc(name)}" aria-label="Edit ${esc(name)}">${actionIcon('edit')}</button></div>`:''}
 function renderCatalog(){let items=state.data.items.filter(x=>(state.filter==='All'||x.category===state.filter)&&(x.name+' '+x.category+' '+x.detail).toLowerCase().includes(state.search.toLowerCase()));
@@ -597,7 +625,7 @@ function bind(){
  document.addEventListener('click',async e=>{
  const el=e.target.closest('[data-action]');if(!el)return;const a=el.dataset.action;
  try{
- if(a==='section'){if(!['storage','prices','activity'].includes(el.dataset.section))return;if(el.dataset.section==='activity'&&!isAdmin())throw Error('Admin only');state.section=el.dataset.section;if(state.section==='prices'){try{await loadPrices()}catch{}}render();return}
+ if(a==='section'){if(!['storage','prices','ranks','activity'].includes(el.dataset.section))return;if(el.dataset.section==='activity'&&!isAdmin())throw Error('Admin only');state.section=el.dataset.section;if(state.section==='prices'){try{await loadPrices()}catch{}}render();return}
  if(a==='reload-prices'){try{await loadPrices()}catch{}render();return}
  if(a==='price-edit'){priceEditModal(el.dataset.kind,el.dataset.id,el.dataset.vendor);return}
  if(a==='price-delete'){await deletePrice(el.dataset.kind,el.dataset.id);return}
