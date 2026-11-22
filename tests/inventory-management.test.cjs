@@ -233,8 +233,56 @@ test('vendor and entry editing/deletion leaves storage data unchanged',async()=>
  const before=f.run('JSON.stringify({items:state.data.items,stock:state.data.stock,logs:state.data.logs})');
  await f.run('loadPrices()');f.run("priceEditModal('vendor')");
  f.ctx.values={name:'Fence'};await f.run('savePrice({get:k=>values[k]})');
- f.run("priceEditModal('entry','','price-1')");f.ctx.values={name:'Telescope',quality:'Epic/Lego',rolls:'160/252'};
+ f.run("state.priceBoard.qualities=['Epic/Lego'];priceEditModal('entry','','price-1')");f.ctx.values={name:'Telescope',quality:'Epic/Lego',rolls:'160/252'};
  await f.run('savePrice({get:k=>values[k]})');assert.equal(f.run('state.priceBoard.entries.length'),1);
  await f.run("deletePrice('vendor','price-1')");assert.equal(f.run('state.priceBoard.entries.length'),0);
  assert.equal(f.run('JSON.stringify({items:state.data.items,stock:state.data.stock,logs:state.data.logs})'),before);
+});
+test('activity is a separate admin-only top-level section; category chips stay used-only',()=>{
+ const f=fixture();f.run("state.data.categories=['Shotguns','Pistols','Unused'];render()");
+ let markup=f.nodes['#app'].innerHTML;
+ assert(markup.includes('data-section="activity"'));assert(!markup.includes('data-action="tab"'));
+ assert(!markup.includes('data-filter="Unused"'));assert(f.run('categorySelect()').includes('value="Unused"'));
+ f.run("state.section='activity';render()");markup=f.nodes['#app'].innerHTML;
+ assert(markup.includes('Search activity'));assert(!markup.includes('Master item catalog'));
+ f.run("state.mode='cloud';state.roomId='room';state.data.viewer={role:'member'};render()");
+ assert(!f.nodes['#app'].innerHTML.includes('Search activity'));assert(!f.run('renderSections()').includes('data-section="activity"'));
+});
+test('quality dropdown preserves existing choices and only admins can create options',async()=>{
+ const f=fixture();await f.run('loadPrices()');f.run("state.priceBoard.entries=[{id:'p',vendor_id:'v',name:'Gold',quality:'Epic',rolls:'228'}];priceEditModal('entry','p')");
+ const markup=f.nodes['#modal-root'].innerHTML;
+ assert(markup.includes('<select class="field" name="quality"'));assert(markup.includes('value="Epic" selected'));
+ assert(markup.includes('Create quality'));
+ f.run("state.mode='cloud';state.data.viewer={role:'member'}");
+ assert(!f.run("configuredOptionField('quality','quality')").includes('data-action="create-option"'));
+ await assert.rejects(f.run('createConfiguredOption({})'),/Only admins/);
+});
+function blueprintFixture(){
+ const f=fixture();f.run("state.data.items.push({id:'bp',name:'Blueprint',category:'Blueprint',detail:'Catalog detail'});state.data.blueprint_descriptions=['Rifle','Armor'];");return f;
+}
+test('Blueprint descriptions have independent quantities in one storage and never edit catalog metadata',async()=>{
+ const f=blueprintFixture();const item=f.run("JSON.stringify(state.data.items.find(x=>x.id==='bp'))");
+ f.run("demoChange('add','bp','','storage-0',5,'Rifle');demoChange('add','bp','','storage-0',3,'Armor');demoChange('move','bp','storage-0','storage-1',2,'Rifle')");
+ assert.equal(f.run("stockQty('bp','storage-0','Rifle')"),3);assert.equal(f.run("stockQty('bp','storage-0','Armor')"),3);
+ assert.equal(f.run("stockQty('bp','storage-1','Rifle')"),2);assert.equal(f.run("total('bp')"),8);
+ f.run("quantityModal({action:'remove',itemId:'bp',fromId:'storage-0',blueprintDescription:'Armor'})");await f.run('removeAll()');
+ assert.equal(f.run("stockQty('bp','storage-0','Armor')"),0);assert.equal(f.run("stockQty('bp','storage-0','Rifle')"),3);
+ assert.equal(f.run("JSON.stringify(state.data.items.find(x=>x.id==='bp'))"),item);
+ assert.throws(()=>f.run("demoChange('add','bp','','storage-0',1,'Unconfigured')"),/configured/);
+});
+test('Blueprint description picker appears only for catalog Blueprint adds; rows carry variant identity',()=>{
+ const f=blueprintFixture();f.run("quantityModal({action:'add',itemId:'bp',toId:'storage-0'})");
+ assert(f.nodes['#modal-root'].innerHTML.includes('name="blueprint_description"'));assert(f.nodes['#modal-root'].innerHTML.includes('Create description'));
+ f.run("quantityModal({action:'add',itemId:'item-0',toId:'storage-0'})");assert(!f.nodes['#modal-root'].innerHTML.includes('name="blueprint_description"'));
+ f.run("demoChange('add','bp','','storage-0',2,'Rifle')");
+ assert(f.run('renderStorage(state.data.storages[0])').includes('data-blueprint-description="Rifle"'));
+});
+test('legacy unspecified Blueprint stock stays separate and cloud changes pass variant identity',async()=>{
+ const f=blueprintFixture();f.run("state.data.stock.push({item_id:'bp',storage_id:'storage-0',quantity:7});demoChange('add','bp','','storage-0',2,'Rifle')");
+ assert.equal(f.run("stockQty('bp','storage-0')"),7);
+ f.ctx.calls=[];f.run("state.mode='cloud';state.roomId='room';rpc=async(name,args)=>{calls.push({name,args})};refreshCloud=async()=>{}");
+ await f.run("executeChange('move','bp','storage-0','storage-1',1,'Rifle')");
+ assert.equal(f.ctx.calls[0].args.p_blueprint_description,'Rifle');
+ f.run("state.modal={kind:'quantity',action:'remove',itemId:'bp',fromId:'storage-0',blueprintDescription:'Rifle'}");await f.run('removeAll()');
+ assert.equal(f.ctx.calls[1].args.p_blueprint_description,'Rifle');
 });

@@ -57,6 +57,8 @@ For every privilege-sensitive change, verify both frontend visibility **and** ba
 - Item settings edit name, category, details and picture. Storage settings edit name and picture; group settings edit the group name. Members retain quantity controls; add new stock by dragging a catalog item into a storage. Storage cards do not have an Add items button.
 - Dropping a stored item outside all storage cards on the page opens the removal quantity prompt; dropping on another storage opens Move. Catalog items dropped outside storages do nothing. Quantity fields start blank.
 - The removal dialog includes Remove all for the selected item/storage pair, using the current database quantity atomically. Deletion confirmations use themed modals. Show deletion logs as readable names and quantities while retaining detailed audit data in the database.
+- Blueprint stock uses a configured description when the catalog item name and category are both Blueprint (case insensitive). Descriptions belong to stock, never catalog metadata. Each description has its own quantity within each storage; moves, removals and Remove all must retain/select that description. Preserve legacy undescribed stock as Unspecified. Admins create description options inline; members may select them.
+- Vendor quality uses a separate configured dropdown with inline admin-only option creation. Preserve existing values. Catalog category chips show used categories only; the creation dropdown shows all configured categories.
 
 ## Code and repository workflow
 
@@ -83,7 +85,7 @@ For every privilege-sensitive change, verify both frontend visibility **and** ba
 
 ## Future panel modules
 
-- Top-level sections are Storage and Item Prices within the same RFM membership. Item Prices lists separate vendors with Item, Quality and Rolls columns, including slash-separated variants. Active members can read; only active admins may create, edit or delete vendors and prices. Vendor data and its audit records are independent of Storage catalog, quantities and history.
+- Top-level sections are Storage, Item Prices and admin-only Activity Logs within the same RFM membership. Storage has no nested Storage board/Activity tabs. Item Prices lists separate vendors with Item, Quality and Rolls columns, including slash-separated variants. Active members can read; only active admins may create, edit or delete vendors and prices. Vendor data and its audit records are independent of Storage catalog, quantities and history.
 
 Add new tabs as distinct sections of the **same RFM Panel** and reuse existing membership/role checks. Keep Storage's catalog, stock, and activity history independent of unrelated modules unless specifically requested. If a larger reorganization becomes appropriate, propose a migration plan first and keep old public functionality working throughout the transition.
 

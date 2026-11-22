@@ -1,5 +1,41 @@
 # Rushhour-RFM-Panel
 
+## Activity tab, vendor qualities and Blueprint descriptions
+
+Apply `supabase/migrations/202611220008_dropdowns_and_blueprint_stock.sql` once
+after migrations 001–007, then push the frontend and reload open browser tabs.
+The old Storage board/Activity sub-tabs are removed. Activity Logs is its own
+admin-only top-level tab. Catalog category chips remain limited to used categories;
+the item-creation dropdown continues to show all configured categories.
+
+Vendor Quality is now a dropdown with an admin-only Create quality option.
+Existing quality values are backfilled into the options table and preserved.
+A database foreign key rejects unconfigured quality values. Quality changes
+remain independent of Storage categories and audit history.
+
+Adding the catalog item named **Blueprint** in category **Blueprint** (case
+insensitive) asks for a configured description. Admins create descriptions inline;
+members can select existing ones. Descriptions are stored on stock rows, never
+on the master item. A storage may hold multiple descriptions with separate
+quantities. Moving, removing and Remove all operate on the selected description.
+Stock rows show their descriptions; activity and deletion audit include them.
+
+The migration extends the stock primary key with `blueprint_description` and
+preserves all existing rows with an empty value (shown as **Unspecified** for old
+Blueprint stock). It does not rewrite catalog metadata or existing categories.
+The legacy RPC signatures operate only on undescribed stock, so older calls cannot
+merge/remove described variants. Use the updated frontend for Blueprint variants.
+Normal items continue to use the undescribed stock row. All option tables have RLS
+and no direct browser privileges; option creation requires an active admin, while
+stock changes continue to require active membership. No new membership group is
+created, no inventory is reseeded, and no live migration is executed by Codex.
+
+Frontend fixture checks cover separate Blueprint quantities, cross-storage moves,
+variant-specific removal, legacy preservation, dropdown permissions, activity-tab
+visibility and unchanged catalog metadata. Live database checks—including migration
+preservation, revoked-user rejection and concurrent stock updates—and browser
+desktop/mobile checks remain pending.
+
 ## Storage and Item Prices tabs
 
 Apply `supabase/migrations/202611220007_item_prices.sql` once before deploying

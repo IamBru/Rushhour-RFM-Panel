@@ -18,7 +18,7 @@
     .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--stroke);border-radius:99px;padding:7px 11px;color:#d4cbe5;font-size:12px;background:#1d172c}.dot{width:7px;height:7px;border-radius:50%;background:var(--green)}.dot.local{background:#eab66b}
     .notice{margin:4px 0 22px;padding:13px 16px;background:#7f51e212;border:1px solid #8b67dc56;border-radius:14px;display:flex;gap:12px;justify-content:space-between;align-items:center;font-size:13px;color:#d6c6f8}
     .statbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:24px}.stat{padding:17px 19px;border:1px solid var(--stroke);background:linear-gradient(145deg,#211932,#171322);border-radius:16px;min-width:0}.stat-label{color:var(--muted);font-size:12px}.stat-value{font-weight:800;font-size:27px;letter-spacing:-1px;margin:3px 0 0}.stat-desc{font-size:11px;color:#7f7597;margin-top:4px}
-    .panel-tabs{width:fit-content;margin-bottom:24px}.price-vendors{display:grid;gap:20px}.price-head{padding:18px;margin:0}.price-table-wrap{overflow:auto;max-height:600px}.price-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}.price-table th,.price-table td{padding:12px 18px;border-top:1px solid var(--stroke)}.price-table th{background:var(--panel2);position:sticky;top:0}.price-table td{overflow-wrap:anywhere}.price-table td:nth-child(3){white-space:nowrap;font-variant-numeric:tabular-nums}
+    .panel-tabs{width:fit-content;max-width:100%;flex-wrap:wrap;margin-bottom:24px}.price-vendors{display:grid;gap:20px}.price-head{padding:18px;margin:0}.price-table-wrap{overflow:auto;max-height:600px}.price-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}.price-table th,.price-table td{padding:12px 18px;border-top:1px solid var(--stroke)}.price-table th{background:var(--panel2);position:sticky;top:0}.price-table td{overflow-wrap:anywhere}.price-table td:nth-child(3){white-space:nowrap;font-variant-numeric:tabular-nums}
     .dashboard{display:grid;grid-template-columns:320px minmax(0,1fr);gap:20px;align-items:start}.panel{background:#151121d9;border:1px solid var(--stroke);border-radius:18px;box-shadow:var(--shadow)}
     .catalog{position:sticky;top:16px;overflow:hidden}.panel-head{padding:19px 18px 15px;border-bottom:1px solid var(--stroke)}.title{font-weight:750;font-size:16px;letter-spacing:-.25px}.help{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}.search{width:100%;padding:11px 12px;border:1px solid #403451;background:#100d1b;color:var(--text);border-radius:11px;outline:none}.search:focus,.field:focus{border-color:var(--accent);box-shadow:0 0 0 3px #7f51e220}.search::placeholder,.field::placeholder{color:#776c8d}
     .filters{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}.chip{border:1px solid #3b324b;background:#201a30;color:#bcb0d2;padding:6px 10px;border-radius:100px;font-size:11px;font-weight:600}.chip.active{background:#7f51e229;color:#e2d1ff;border-color:#7f51e27a}
@@ -74,7 +74,7 @@ function seedData(){
  const storages = ['Gun Rack 1','Gun Rack 2','Gun Rack 3','Gun Stash','Utilities'].map((name,i)=>({id:'storage-'+i,name,storage_group_id:'local-main'}));
  return {room:{id:'local',name:'RFM Inventory',join_code:''},storage_groups:[{id:'local-main',name:'Main storage group'}],items,storages,stock:initialStock.map(([a,b,q])=>({item_id:items[a].id,storage_id:storages[b].id,quantity:q})),logs:[],members:[]};
 }
-let state = {mode:'local',data:null,client:null,roomId:null,name:localStorage.getItem('rfm_name')||'',section:'storage',priceBoard:null,priceError:'',search:'',filter:'All',tab:'storages',logSearch:'',busy:false,lastSync:null,modal:null,drag:null};
+let state = {mode:'local',data:null,client:null,roomId:null,name:localStorage.getItem('rfm_name')||'',section:'storage',priceBoard:null,priceError:'',search:'',filter:'All',logSearch:'',busy:false,lastSync:null,modal:null,drag:null};
 function localSave(){localStorage.setItem('rfm_local',JSON.stringify(state.data));}
 function toast(msg,error=false){const el=$('#toast-root');el.innerHTML=`<div class="toast ${error?'error':''}">${esc(msg)}</div>`;clearTimeout(window._toastTimeout);window._toastTimeout=setTimeout(()=>el.innerHTML='',3200)}
 function icon(cat){return cat==='Shotguns'?'◈':cat==='Pistols'?'◇':'▦'}
@@ -133,19 +133,24 @@ async function saveImage(itemId,file){
 }
 
 function total(itemId){return state.data.stock.filter(x=>x.item_id===itemId).reduce((s,x)=>s+x.quantity,0)}
-function stockQty(itemId,storageId){return state.data.stock.find(x=>x.item_id===itemId&&x.storage_id===storageId)?.quantity||0}
+function stockQty(itemId,storageId,description=''){return state.data.stock.find(x=>x.item_id===itemId&&x.storage_id===storageId&&(x.blueprint_description||'')===description)?.quantity||0}
+function isBlueprint(item){return item?.name.trim().toLowerCase()==='blueprint'&&item?.category.trim().toLowerCase()==='blueprint'}
 function currentName(){return state.mode==='cloud'&&state.roomId ? (state.data?.viewer?.name||'Member') : (state.name.trim()||'You')}
 function isAdmin(){return state.mode==='local'||state.data?.viewer?.role==='admin'}
 function dateText(s){return new Date(s).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}
 function logEntry(action, item_name='',from_name='',to_name='',quantity=0,detail=''){
  const logs=state.data.logs; logs.unshift({id:Date.now()+Math.random(),actor_name:currentName(),action,item_name,from_name,to_name,quantity,detail,created_at:new Date().toISOString()});
 }
-function demoChange(action,itemId,fromId,toId,qty){
+function demoChange(action,itemId,fromId,toId,qty,description=''){
  const d=state.data,item=d.items.find(x=>x.id===itemId);let from=fromId?d.storages.find(x=>x.id===fromId):null,to=toId?d.storages.find(x=>x.id===toId):null;
- if(!item)throw Error('Item not found'); if(!Number.isInteger(qty)||qty<1)throw Error('Enter a positive quantity');
- if(action!=='add'){const row=d.stock.find(x=>x.item_id===itemId&&x.storage_id===fromId);if(!row||row.quantity<qty)throw Error('Not enough items in that storage');row.quantity-=qty;d.stock=d.stock.filter(x=>x.quantity>0)}
- if(action!=='remove'){let row=d.stock.find(x=>x.item_id===itemId&&x.storage_id===toId);if(row)row.quantity+=qty;else d.stock.push({item_id:itemId,storage_id:toId,quantity:qty})}
- logEntry(action,item.name,from?.name||'',to?.name||'',qty);localSave();
+ if(!item)throw Error('Item not found');
+ if(description&&!configuredOptions('blueprint').includes(description))throw Error('Choose a configured Blueprint description');
+ if(action==='add'&&description&&!isBlueprint(item))throw Error('Descriptions are only available for Blueprints');
+ if(action==='add'&&isBlueprint(item)&&!description&&!d.stock.some(x=>x.item_id===itemId&&x.storage_id===toId&&!(x.blueprint_description||'')))throw Error('Choose a Blueprint description');
+ if(!Number.isInteger(qty)||qty<1)throw Error('Enter a positive quantity');
+ if(action!=='add'){const row=d.stock.find(x=>x.item_id===itemId&&x.storage_id===fromId&&(x.blueprint_description||'')===description);if(!row||row.quantity<qty)throw Error('Not enough items in that storage');row.quantity-=qty;d.stock=d.stock.filter(x=>x.quantity>0)}
+ if(action!=='remove'){let row=d.stock.find(x=>x.item_id===itemId&&x.storage_id===toId&&(x.blueprint_description||'')===description);if(row)row.quantity+=qty;else d.stock.push({item_id:itemId,storage_id:toId,quantity:qty,blueprint_description:description})}
+ logEntry(action,item.name+(description?' - '+description:''),from?.name||'',to?.name||'',qty);localSave();
 }
 function captureScroll(){
  const positions=Array.from(document.querySelectorAll('[data-scroll-key]')).map(el=>{
@@ -169,6 +174,7 @@ function renderContent(){
  const app=$('#app');const d=state.data;
  if(state.mode==='cloud' && !state.roomId){app.innerHTML=renderHeader(false)+renderGroupGate()+renderFooter();return}
  if(state.mode==='local' && location.hostname.endsWith('.github.io')){app.innerHTML=renderHeader(false)+`<div class="group-panel join-only"><h2>Connecting to RFM…</h2><p class="help">Your shared panel is loading. If this message stays visible, refresh the page or contact an admin.</p></div>`+renderFooter();return}
+ if(state.section==='activity'){if(!isAdmin())state.section='storage';else{app.innerHTML=renderHeader(true)+renderSections()+'<div class="board-head"><h2 class="title">Activity Logs</h2><button class="btn soft" data-action="export-log">Export log CSV</button></div>'+renderActivity()+renderFooter();return}}
  if(state.section==='prices'){app.innerHTML=renderHeader(true)+renderSections()+renderPrices()+renderFooter();return}
  const t=d.stock.reduce((s,x)=>s+x.quantity,0);const populated=d.stock.filter(x=>x.quantity>0).length;
  app.innerHTML=`${renderHeader(true)}${renderSections()}
@@ -190,13 +196,12 @@ function renderContent(){
      <div class="catalog-items" id="catalog-items" data-scroll-key="catalog">${renderCatalog()}</div>
    </aside>
    <section>
-     <div class="board-head"><div class="board-title"><div class="tabs"><button class="tab ${state.tab==='storages'?'active':''}" data-action="tab" data-tab="storages">Storage board</button>${isAdmin()?`<button class="tab ${state.tab==='activity'?'active':''}" data-action="tab" data-tab="activity">Activity log</button>`:''}</div></div>
-     <div class="flex">${state.tab==='storages'?'<button class="btn soft" data-action="new-storage-group">+ New storage group</button>':(isAdmin()?'<button class="btn soft" data-action="export-log">Export log CSV</button>':'')}</div></div>
-     ${state.tab==='storages'?`<div class="guide" style="margin-bottom:14px"><span>↔</span> Drag items between storages. Drop outside any storage to remove. On mobile, tap + / −.</div>${renderStorageGroups()}`:(isAdmin()?renderActivity():'<div class="empty">Admins only</div>')}
+     <div class="board-head"><h2 class="title">Storages</h2><button class="btn soft" data-action="new-storage-group">+ New storage group</button></div>
+     <div class="guide" style="margin-bottom:14px">Drag items between storages. Drop outside any storage to remove. On mobile, tap + / &minus;.</div>${renderStorageGroups()}
    </section>
  </div>${renderFooter()}`;
 }
-function renderSections(){return `<nav class="tabs panel-tabs" aria-label="Panel sections"><button class="tab ${state.section==='storage'?'active':''}" data-action="section" data-section="storage">Storage</button><button class="tab ${state.section==='prices'?'active':''}" data-action="section" data-section="prices">Item Prices</button></nav>`}
+function renderSections(){return `<nav class="tabs panel-tabs" aria-label="Panel sections"><button class="tab ${state.section==='storage'?'active':''}" data-action="section" data-section="storage">Storage</button><button class="tab ${state.section==='prices'?'active':''}" data-action="section" data-section="prices">Item Prices</button>${isAdmin()?`<button class="tab ${state.section==='activity'?'active':''}" data-action="section" data-section="activity">Activity Logs</button>`:''}</nav>`}
 function renderPrices(){
  const board=state.priceBoard;
  return `<div class="board-head"><div><h2 class="title">Item Prices</h2><p class="help">Items sold to vendors, separate from storage inventory.</p></div>${isAdmin()&&board?'<button class="btn soft" data-action="price-edit" data-kind="vendor">+ New vendor</button>':''}</div>${state.priceError?`<div class="empty">${esc(state.priceError)}<button class="btn" data-action="reload-prices">Retry</button></div>`:''}${!board?'<div class="empty">Vendor prices are not loaded yet.</div>':`<div class="price-vendors">${board.vendors.map(v=>`<section class="panel"><div class="storage-group-head price-head"><h2 class="storage-group-title">${esc(v.name)}</h2>${isAdmin()?`<div class="flex"><button class="btn soft" data-action="price-edit" data-kind="entry" data-vendor="${esc(v.id)}">+ Add item</button>${priceControls('vendor',v.id)}</div>`:''}</div><div class="price-table-wrap" data-scroll-key="vendor-${esc(v.id)}"><table class="price-table"><thead><tr><th>Item</th><th>Quality</th><th>Rolls</th>${isAdmin()?'<th>Actions</th>':''}</tr></thead><tbody>${board.entries.filter(x=>x.vendor_id===v.id).map(x=>`<tr data-scroll-anchor="price-${esc(x.id)}"><td>${esc(x.name)}</td><td>${esc(x.quality)}</td><td>${esc(x.rolls)}</td>${isAdmin()?`<td>${priceControls('entry',x.id)}</td>`:''}</tr>`).join('')||`<tr><td colspan="${isAdmin()?4:3}" class="help">No items listed for this vendor yet.</td></tr>`}</tbody></table></div></section>`).join('')||'<div class="empty">No vendors yet. An admin can add Pawn Shop, Fence, or other vendors.</div>'}</div>`}`;
@@ -212,12 +217,13 @@ function priceEditModal(kind,id='',vendorId=''){
  const row=id?(kind==='vendor'?state.priceBoard.vendors:state.priceBoard.entries).find(x=>x.id===id):null;
  if(id&&!row)throw Error('Entry not found');
  state.modal={kind:'price',priceKind:kind,id,vendorId:row?.vendor_id||vendorId};
- setModal(`<h2>${id?'Edit':'Add'} ${kind==='vendor'?'vendor':'vendor item'}</h2><form id="price-form"><label class="field-label">${kind==='vendor'?'Vendor':'Item'} name</label><input class="field" name="name" maxlength="100" value="${esc(row?.name||'')}" required>${kind==='entry'?`<label class="field-label">Quality</label><input class="field" name="quality" maxlength="80" value="${esc(row?.quality||'')}" placeholder="e.g. Epic or Epic/Lego" required><label class="field-label">Rolls</label><input class="field" name="rolls" maxlength="80" value="${esc(row?.rolls||'')}" placeholder="e.g. 160 or 160/252" pattern="[0-9]+([.][0-9]+)?(/[0-9]+([.][0-9]+)?)*" required>`:''}${modalActions('Save')}</form>`);
+ setModal(`<h2>${id?'Edit':'Add'} ${kind==='vendor'?'vendor':'vendor item'}</h2><form id="price-form"><label class="field-label">${kind==='vendor'?'Vendor':'Item'} name</label><input class="field" name="name" maxlength="100" value="${esc(row?.name||'')}" required>${kind==='entry'?`<label class="field-label">Quality</label>${configuredOptionField('quality','quality',row?.quality||'')}<label class="field-label">Rolls</label><input class="field" name="rolls" maxlength="80" value="${esc(row?.rolls||'')}" placeholder="e.g. 160 or 160/252" pattern="[0-9]+([.][0-9]+)?(/[0-9]+([.][0-9]+)?)*" required>`:''}${modalActions('Save')}</form>`);
 }
 async function savePrice(v){
  if(!isAdmin())throw Error('Only admins can edit vendor prices');
  const m=state.modal,name=(v.get('name')||'').trim(),quality=(v.get('quality')||'').trim(),rolls=(v.get('rolls')||'').trim();
  if(!name||name.length>100||(m.priceKind==='entry'&&(!quality||quality.length>80||rolls.length>80||!/^\d+(\.\d+)?(\/\d+(\.\d+)?)*$/.test(rolls))))throw Error('Enter a name, quality and valid rolls amount');
+ if(m.priceKind==='entry'&&!configuredOptions('quality').includes(quality))throw Error('Choose a configured quality');
  if(state.mode==='cloud')await rpc('manage_item_prices',{p_room:state.roomId,p_action:'save_'+m.priceKind,p_id:m.id||null,p_vendor:m.vendorId||null,p_name:name,p_quality:quality,p_rolls:rolls});
  else{const rows=m.priceKind==='vendor'?state.priceBoard.vendors:state.priceBoard.entries;const row=m.id?rows.find(x=>x.id===m.id):{id:uid()};if(!row)throw Error('Not found');Object.assign(row,m.priceKind==='vendor'?{name}:{name,quality,rolls,vendor_id:m.vendorId});if(!m.id)rows.push(row);localSave();}
  await loadPrices();closeModal();render();toast('Saved');
@@ -263,7 +269,7 @@ function renderStorageGroups(){
 function storageLabel(storage){const group=state.data.storage_groups?.find(g=>g.id===storage.storage_group_id);return group?group.name+' / '+storage.name:storage.name}
 function renderStorage(storage){const rows=state.data.stock.filter(x=>x.storage_id===storage.id&&x.quantity>0).map(x=>({stock:x,item:state.data.items.find(i=>i.id===x.item_id)})).filter(x=>x.item).sort((a,b)=>a.item.name.localeCompare(b.item.name));const n=rows.reduce((s,x)=>s+x.stock.quantity,0);
 return `<section class="storage" data-storage="${esc(storage.id)}"><div class="storage-header"><div class="flex"><div class="storage-icon">${storage.image_data?`<img src="${esc(storage.image_data)}" alt="" class="storage-image">`:"&#9635;"}</div><div><div class="storage-name">${esc(storage.name)}</div><div class="storage-meta">${n} units · ${rows.length} item types</div></div></div>${adminControls('storage',storage.id,storage.name)}</div>
-<div class="storage-list">${rows.length?rows.map(({stock,item})=>`<div class="stock-row" draggable="true" data-drag-item="${esc(item.id)}" data-drag-from="${esc(storage.id)}">${itemThumb(item,true)}<div class="stock-name" title="${esc(item.name)}">${esc(item.name)}</div><span class="stock-qty">${stock.quantity}</span><div class="stock-buttons"><button data-action="move-one" data-item="${esc(item.id)}" data-storage-id="${esc(storage.id)}" title="Move to another storage"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18 18 6M7 6h11v11"/></svg></button><button data-action="add-one" data-item="${esc(item.id)}" data-storage-id="${esc(storage.id)}" title="Add quantity"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button data-action="remove-one" data-item="${esc(item.id)}" data-storage-id="${esc(storage.id)}" title="Remove from inventory"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/></svg></button></div></div>`).join(''):`<div class="empty"><div class="empty-icon">↓</div>Drop an item here<br></div>`}</div></section>`}
+<div class="storage-list">${rows.length?rows.map(({stock,item})=>`<div class="stock-row" draggable="true" data-drag-item="${esc(item.id)}" data-drag-from="${esc(storage.id)}" data-blueprint-description="${esc(stock.blueprint_description||'')}">${itemThumb(item,true)}<div class="stock-name" title="${esc(item.name)}">${esc(item.name)}${stock.blueprint_description||isBlueprint(item)?`<div class="item-detail">${esc(stock.blueprint_description||'Unspecified')}</div>`:''}</div><span class="stock-qty">${stock.quantity}</span><div class="stock-buttons"><button data-action="move-one" data-item="${esc(item.id)}" data-storage-id="${esc(storage.id)}" data-blueprint-description="${esc(stock.blueprint_description||'')}" title="Move to another storage"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18 18 6M7 6h11v11"/></svg></button><button data-action="add-one" data-item="${esc(item.id)}" data-storage-id="${esc(storage.id)}" data-blueprint-description="${esc(stock.blueprint_description||'')}" title="Add quantity"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button data-action="remove-one" data-item="${esc(item.id)}" data-storage-id="${esc(storage.id)}" data-blueprint-description="${esc(stock.blueprint_description||'')}" title="Remove from inventory"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/></svg></button></div></div>`).join(''):`<div class="empty"><div class="empty-icon">↓</div>Drop an item here<br></div>`}</div></section>`}
 function deletionDescription(l){
  const kind=l.action.replace('_deleted','').replace('_',' ');
  let name=l.item_name||'',rows=[];
@@ -297,16 +303,17 @@ async function removeAll(){
  const m=state.modal;if(state.busy||m?.kind!=='quantity'||m.action!=='remove')return;
  state.busy=true;
  try{
-  if(state.mode==='cloud')await rpc('remove_all_stock',{p_room:state.roomId,p_item:m.itemId,p_storage:m.fromId});
-  else{const qty=stockQty(m.itemId,m.fromId);if(qty>0)demoChange('remove',m.itemId,m.fromId,'',qty);}
-  closeModal();if(state.mode==='cloud')await refreshCloud();else render();toast('All of this item removed from this storage');
+  if(state.mode==='cloud')await rpc('remove_all_stock',{p_room:state.roomId,p_item:m.itemId,p_storage:m.fromId,...(m.blueprintDescription?{p_blueprint_description:m.blueprintDescription}:{})});
+  else{const qty=stockQty(m.itemId,m.fromId,m.blueprintDescription);if(qty>0)demoChange('remove',m.itemId,m.fromId,'',qty,m.blueprintDescription);}
+  closeModal();if(state.mode==='cloud')await refreshCloud();else render();toast(m.blueprintDescription?'All of this Blueprint description removed from this storage':'All of this item removed from this storage');
  }finally{state.busy=false}
 }
 function modalActions(label='Save'){return `<div class="modal-actions"><button class="btn" type="button" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">${esc(label)}</button></div>`}
-function quantityModal({action,itemId,fromId='',toId=''}){const d=state.data,item=d.items.find(x=>x.id===itemId);if(!item)return;const max=fromId?stockQty(itemId,fromId):1000000;const options=d.storages.filter(x=>action!=='move'||x.id!==fromId).map(x=>`<option value="${esc(x.id)}" ${x.id===toId?'selected':''}>${esc(storageLabel(x))}</option>`).join('');if((action==='add'||action==='move')&&!options){toast('Add another storage first',true);return}
+function quantityModal({action,itemId,fromId='',toId='',blueprintDescription}){const d=state.data,item=d.items.find(x=>x.id===itemId);if(!item)return;const max=fromId?stockQty(itemId,fromId,blueprintDescription||''):1000000;const options=d.storages.filter(x=>action!=='move'||x.id!==fromId).map(x=>`<option value="${esc(x.id)}" ${x.id===toId?'selected':''}>${esc(storageLabel(x))}</option>`).join('');if((action==='add'||action==='move')&&!options){toast('Add another storage first',true);return}
  const label=action==='add'?'Add to storage':action==='move'?'Move between storages':'Remove from inventory';
- state.modal={kind:'quantity',action,itemId,fromId,toId};setModal(`<h2>${label}</h2><p><b>${esc(item.name)}</b> ${fromId?`· ${max} available in ${esc(d.storages.find(x=>x.id===fromId)?.name)}`:'· Choose where to store it'}</p><form id="quantity-form">
+ state.modal={kind:'quantity',action,itemId,fromId,toId,blueprintDescription:blueprintDescription||'',chooseBlueprint:action==='add'&&isBlueprint(item)&&blueprintDescription===undefined};setModal(`<h2>${label}</h2><p><b>${esc(item.name)}</b> ${fromId?`· ${max} available in ${esc(d.storages.find(x=>x.id===fromId)?.name)}`:'· Choose where to store it'}</p><form id="quantity-form">
  ${action!=='remove'?`<label class="field-label">${action==='move'?'Move to':'Storage location'}</label><select class="field" name="to" required>${options}</select>`:''}
+ ${state.modal.chooseBlueprint?`<label class="field-label">Blueprint description</label>${configuredOptionField('blueprint','blueprint_description')}`:(isBlueprint(item)||blueprintDescription?`<label class="field-label">Blueprint description</label><select class="field" disabled><option>${esc(blueprintDescription||'Unspecified (existing stock)')}</option></select>`:'')}
  <label class="field-label">Quantity</label><input class="field" name="qty" type="number" min="1" max="${max}" value="" inputmode="numeric" required>${action==='remove'?'<div class="modal-actions"><button class="btn" type="button" data-action="close-modal">Cancel</button><button class="btn danger" type="button" data-action="remove-all">Remove all</button><button class="btn primary" type="submit">Remove items</button></div>':modalActions(action==='add'?'Add items':'Move items')}</form>`)}
 function setupModal(){let url=localStorage.getItem('rfm_url')||CONFIG.SUPABASE_URL,key=localStorage.getItem('rfm_key')||CONFIG.SUPABASE_ANON_KEY;
  setModal(`<h2>Connect a shared group</h2><p>One-time setup for the person hosting the inventory. You can try everything without this, but sharing requires a free database.</p><form id="connect-form"><label class="field-label">Supabase project URL</label><input class="field" name="url" value="${esc(url)}" placeholder="https://xxxx.supabase.co" required><label class="field-label">Supabase publishable / anon key</label><input class="field" name="key" value="${esc(key)}" placeholder="sb_publishable_... or eyJ..." required>${modalActions('Connect')}</form><div class="setup-card"><b>Setup:</b> Create a free project at <a href="https://supabase.com" target="_blank" rel="noopener noreferrer">Supabase</a>, enable <b>Anonymous Sign-ins</b> in Authentication → Providers, run <b>supabase_setup_admin.sql</b> in SQL Editor, and paste the Project URL and publishable key here.<br><br>To share one link without each person setting it up, put these two public values in <b>CONFIG</b> at the beginning of this HTML file and host it as a static website. <b>Never paste a secret/service-role key.</b></div><div class="tip">The private demo stays available. No spreadsheet needed.</div>`)}
@@ -360,7 +367,7 @@ async function deleteEntity(kind,id){
   else{
    const storageIds=kind==='storage'?[id]:kind==='storage_group'?state.data.storages.filter(x=>x.storage_group_id===id).map(x=>x.id):[];
    const removed=state.data.stock.filter(x=>kind==='item'?x.item_id===id:storageIds.includes(x.storage_id));
-   const auditStock=removed.map(x=>({...x,before:x.quantity,item:state.data.items.find(i=>i.id===x.item_id)?.name,storage:state.data.storages.find(i=>i.id===x.storage_id)?.name}));
+   const auditStock=removed.map(x=>({...x,before:x.quantity,item:(state.data.items.find(i=>i.id===x.item_id)?.name||'')+(x.blueprint_description?' - '+x.blueprint_description:''),storage:state.data.storages.find(i=>i.id===x.storage_id)?.name}));
    state.data.stock=state.data.stock.filter(x=>!removed.includes(x));
    if(kind==='item')state.data.items=state.data.items.filter(x=>x.id!==id);
    if(storageIds.length)state.data.storages=state.data.storages.filter(x=>!storageIds.includes(x.id));
@@ -380,6 +387,32 @@ function newStorageModal(groupId){
  setModal(`<h2>Add a storage</h2><p>Storage group: <b>${esc(group.name)}</b></p><form id="storage-form"><input type="hidden" name="storage_group_id" value="${esc(group.id)}"><label class="field-label">Storage name</label><input class="field" name="name" maxlength="80" placeholder="e.g. Locker A" required>${modalActions('Create storage')}</form>`);
 }
 
+function configuredOptions(kind){
+ if(kind==='quality'){
+  const board=state.priceBoard;if(!board)return [];
+  if(!board.qualities&&state.mode==='local')board.qualities=[...new Set(board.entries.map(x=>x.quality))];
+  return board.qualities||[];
+ }
+ if(state.mode==='local')state.data.blueprint_descriptions??=[];
+ return state.data.blueprint_descriptions||[];
+}
+function configuredOptionField(kind,field,selected=''){
+ const names=configuredOptions(kind),label=kind==='quality'?'quality':'description',current=selected||names[0]||'';
+ return `<div data-option-kind="${kind}"><select class="field" name="${field}" data-configured-option="${kind}" required>${isAdmin()?`<option value="" data-create-option="true" ${!names.length?'selected':''}>+ Create ${label}...</option>`:(!names.length?'<option value="">Ask an admin to add options</option>':'')}${names.map(n=>`<option value="${esc(n)}" ${n===current?'selected':''}>${esc(n)}</option>`).join('')}</select>${isAdmin()?`<div data-option-fields ${names.length?'hidden':''}><label class="field-label">New ${label}</label><div class="category-setting"><input class="field" data-option-name maxlength="80" aria-label="New ${label}"><button class="btn soft" type="button" data-action="create-option" data-kind="${kind}">Create ${label}</button></div></div>`:''}</div>`;
+}
+async function createConfiguredOption(button){
+ if(!isAdmin())throw Error('Only admins can create options');if(state.busy)return;
+ const kind=button.dataset.kind;if(!['quality','blueprint'].includes(kind))throw Error('Invalid option');
+ const container=button.closest('[data-option-kind]'),input=container.querySelector('[data-option-name]'),select=container.querySelector('select'),name=input.value.trim();
+ if(!name||name.length>80)throw Error('Enter an option name (1-80 characters)');
+ if(configuredOptions(kind).some(x=>x.toLowerCase()===name.toLowerCase()))throw Error('That option already exists');
+ state.busy=true;button.disabled=true;
+ try{
+  if(state.mode==='cloud'){await rpc('add_dropdown_option',{p_room:state.roomId,p_kind:kind,p_name:name});if(kind==='quality')await loadPrices();else await refreshCloud()}
+  else{configuredOptions(kind).push(name);if(kind==='blueprint')logEntry('blueprint_description_created','','','',0,'Created Blueprint description: '+name);else{state.priceBoard.audit??=[];state.priceBoard.audit.push({actor_name:currentName(),action:'quality_created',name,created_at:new Date().toISOString()});}localSave();}
+  const option=document.createElement('option');option.value=name;option.textContent=name;select.add(option);select.value=name;container.querySelector('[data-option-fields]').hidden=true;input.value='';select.focus();toast('Option created');
+ }finally{state.busy=false;button.disabled=false}
+}
 function categoryNames(){
  if(state.mode==='local'&&!state.data.categories)state.data.categories=[...new Set(state.data.items.map(x=>x.category))];
  return state.data.categories||[];
@@ -495,8 +528,8 @@ async function refreshCloud(silent=false){if(!state.roomId)return;try{let data=a
   while(logs.length<target){const limit=Math.min(1000,target-logs.length);const batch=await rpc('get_activity',{p_room:state.roomId,p_limit:limit,p_offset:logs.length});logs.push(...batch);if(batch.length<limit)break;}
   data.logs=logs;
  }
- state.data=data;if(state.section==='prices'){try{await loadPrices()}catch{}}state.name=data.viewer?.name||state.name;if(!isAdmin()&&state.tab==='activity')state.tab='storages';state.lastSync=Date.now();if(!silent||!document.activeElement||!['item-search','log-search'].includes(document.activeElement.id)){render()}}catch(e){if(/membership is inactive|do not have access/i.test(e.message)){state.roomId=null;localStorage.removeItem('rfm_room_id');state.tab='storages';closeModal();render();toast('Your RFM access has been revoked.',true);return;}throw e;}}
-async function executeChange(action,item,from,to,qty){if(state.mode==='local')demoChange(action,item,from,to,qty);else await rpc('change_stock',{p_room:state.roomId,p_action:action,p_item:item,p_from:from||null,p_to:to||null,p_quantity:qty});if(state.mode==='cloud')await refreshCloud();else render()}
+ state.data=data;if(state.section==='prices'){try{await loadPrices()}catch{}}state.name=data.viewer?.name||state.name;if(!isAdmin()&&state.section==='activity')state.section='storage';state.lastSync=Date.now();if(!silent||!document.activeElement||!['item-search','log-search'].includes(document.activeElement.id)){render()}}catch(e){if(/membership is inactive|do not have access/i.test(e.message)){state.roomId=null;localStorage.removeItem('rfm_room_id');state.section='storage';closeModal();render();toast('Your RFM access has been revoked.',true);return;}throw e;}}
+async function executeChange(action,item,from,to,qty,description=''){if(state.mode==='local')demoChange(action,item,from,to,qty,description);else await rpc('change_stock',{p_room:state.roomId,p_action:action,p_item:item,p_from:from||null,p_to:to||null,p_quantity:qty,...(description?{p_blueprint_description:description}:{})});if(state.mode==='cloud')await refreshCloud();else render()}
 async function getExport(){
  if(!isAdmin())throw Error('Only admins can download backups');
  // Refresh the snapshot so a revoked or demoted admin cannot export cached data.
@@ -513,7 +546,7 @@ function bind(){
  document.addEventListener('click',async e=>{
  const el=e.target.closest('[data-action]');if(!el)return;const a=el.dataset.action;
  try{
- if(a==='section'){if(!['storage','prices'].includes(el.dataset.section))return;state.section=el.dataset.section;if(state.section==='prices'){try{await loadPrices()}catch{}}render();return}
+ if(a==='section'){if(!['storage','prices','activity'].includes(el.dataset.section))return;if(el.dataset.section==='activity'&&!isAdmin())throw Error('Admin only');state.section=el.dataset.section;if(state.section==='prices'){try{await loadPrices()}catch{}}render();return}
  if(a==='reload-prices'){try{await loadPrices()}catch{}render();return}
  if(a==='price-edit'){priceEditModal(el.dataset.kind,el.dataset.id,el.dataset.vendor);return}
  if(a==='price-delete'){await deletePrice(el.dataset.kind,el.dataset.id);return}
@@ -526,6 +559,7 @@ function bind(){
  if(a==='profile'){profileModal();return}
  if(a==='edit-entity'){editEntityModal(el.dataset.kind,el.dataset.id);return}
  if(a==='delete-entity'){await deleteEntity(el.dataset.kind,el.dataset.id);return}
+ if(a==='create-option'){await createConfiguredOption(el);return}
  if(a==='create-inline-category'){await createInlineCategory();return}
  if(a==='new-item'){if(!isAdmin())throw Error('Only admins can create catalog items');newItemModal();return}
  if(a==='new-storage'){newStorageModal(el.dataset.storageGroup);return}
@@ -537,10 +571,10 @@ function bind(){
  if(a==='cancel-invite'){if(!isAdmin())throw Error('Admin only');if(!await confirmAction('Cancel this unused invitation?'))return;await rpc('cancel_invite',{p_room:state.roomId,p_invite:el.dataset.invite});await refreshCloud();shareModal();toast('Invitation canceled');return}
  if(a==='copy-code'){const input=$('#invite-code');if(!input)throw Error('No invitation code shown');await navigator.clipboard.writeText(input.value);toast('Personal invitation code copied');return}
  if(a==='filter'){state.filter=el.dataset.filter;render();return}
- if(a==='tab'){if(el.dataset.tab==='activity'&&!isAdmin())throw Error('Admin only');state.tab=el.dataset.tab;render();return}
- if(a==='add-one'){quantityModal({action:'add',itemId:el.dataset.item,toId:el.dataset.storageId});return}
- if(a==='remove-one'){quantityModal({action:'remove',itemId:el.dataset.item,fromId:el.dataset.storageId});return}
- if(a==='move-one'){quantityModal({action:'move',itemId:el.dataset.item,fromId:el.dataset.storageId});return}
+
+ if(a==='add-one'){quantityModal({action:'add',itemId:el.dataset.item,toId:el.dataset.storageId,blueprintDescription:el.dataset.blueprintDescription});return}
+ if(a==='remove-one'){quantityModal({action:'remove',itemId:el.dataset.item,fromId:el.dataset.storageId,blueprintDescription:el.dataset.blueprintDescription});return}
+ if(a==='move-one'){quantityModal({action:'move',itemId:el.dataset.item,fromId:el.dataset.storageId,blueprintDescription:el.dataset.blueprintDescription});return}
  if(a==='export'){download(await getExport(),'RFM-inventory-backup-'+new Date().toISOString().slice(0,10)+'.json','application/json');toast('Backup downloaded');return}
  if(a==='export-log'){if(!isAdmin())throw Error('Admin only');await exportLog();return}
  if(a==='load-older'){if(!isAdmin())throw Error('Admin only');const batch=await rpc('get_activity',{p_room:state.roomId,p_limit:150,p_offset:state.data.logs.length});if(batch.length===0)toast('No older changes');else {state.data.logs.push(...batch);render()}return}
@@ -548,6 +582,7 @@ function bind(){
  }catch(err){toast(err.message||'Something went wrong',true)}
  });
  document.addEventListener('change',e=>{
+  if(e.target.dataset.configuredOption){const fields=e.target.closest('[data-option-kind]').querySelector('[data-option-fields]');if(fields){fields.hidden=!(isAdmin()&&e.target.selectedOptions[0]?.dataset.createOption);if(!fields.hidden)fields.querySelector('input').focus();}return;}
   if(e.target.name==='category'&&e.target.closest('#item-form')){const fields=$('#new-category-fields');if(fields){fields.hidden=!(isAdmin()&&e.target.selectedOptions[0]?.dataset.createCategory);if(!fields.hidden)$('#new-category-name').focus();}return;}
   if(e.target.id==='display-scale'){try{applyDisplayScale(e.target.value)}catch(err){toast(err.message,true)}return;}
   if(e.target.id==='item-image-file'){
@@ -565,7 +600,7 @@ function bind(){
  if(f.id==='price-form'){await savePrice(v);return;}
  if(f.id==='logo-form'){await saveLogo(v);shareModal();toast('Logo updated');return;}
  if(f.id==='invite-form'){if(!isAdmin())throw Error('Admin only');const inv=await rpc('create_invite',{p_room:state.roomId,p_role:v.get('role')||'member'});await refreshCloud();showInvite(inv.code,inv.role,inv.expires_at);toast('One-time invitation created');return;}
- if(f.id==='quantity-form'){const m=state.modal,qty=Number(v.get('qty'));if(!Number.isInteger(qty)||qty<1)throw Error('Enter a positive whole quantity');await executeChange(m.action,m.itemId,m.fromId,v.get('to')||m.toId||'',qty);closeModal();toast(m.action==='move'?'Item moved and logged':'Inventory updated and logged');}
+ if(f.id==='quantity-form'){const m=state.modal,qty=Number(v.get('qty'));if(!Number.isInteger(qty)||qty<1)throw Error('Enter a positive whole quantity');const description=m.chooseBlueprint?(v.get('blueprint_description')||''):m.blueprintDescription;if(m.chooseBlueprint&&!configuredOptions('blueprint').includes(description))throw Error('Choose a Blueprint description');await executeChange(m.action,m.itemId,m.fromId,v.get('to')||m.toId||'',qty,description);closeModal();toast(m.action==='move'?'Item moved and logged':'Inventory updated and logged');}
  if(f.id==='item-form'){
   if(!isAdmin())throw Error('Only admins can create catalog items');
   const name=v.get('name').trim(),category=(v.get('category')||'').trim(),detail=v.get('detail').trim();
@@ -596,10 +631,10 @@ function bind(){
  if(f.id==='join-room-form'){state.name=v.get('display_name').trim();localStorage.setItem('rfm_name',state.name);const room=await rpc('join_room',{p_code:v.get('code'),p_display_name:state.name});state.roomId=room.id;localStorage.setItem('rfm_room_id',room.id);await refreshCloud();toast('Welcome to the RFM Panel!');}
  }catch(err){toast(err.message||'Unable to save',true);f.querySelector('button[type=submit]')?.removeAttribute('disabled')}finally{state.busy=false}
  });
- document.addEventListener('dragstart',e=>{if(e.target.closest('button')){e.preventDefault();return}const elem=e.target.closest('[data-drag-item]');if(!elem)return;state.drag={itemId:elem.dataset.dragItem,fromId:elem.dataset.dragFrom||''};e.dataTransfer.effectAllowed=state.drag.fromId?'move':'copy';e.dataTransfer.setData('text/plain',state.drag.itemId)});
+ document.addEventListener('dragstart',e=>{if(e.target.closest('button')){e.preventDefault();return}const elem=e.target.closest('[data-drag-item]');if(!elem)return;state.drag={itemId:elem.dataset.dragItem,fromId:elem.dataset.dragFrom||'',blueprintDescription:elem.dataset.dragFrom?elem.dataset.blueprintDescription:undefined};e.dataTransfer.effectAllowed=state.drag.fromId?'move':'copy';e.dataTransfer.setData('text/plain',state.drag.itemId)});
  document.addEventListener('dragover',e=>{if(!state.drag)return;const storage=e.target.closest('[data-storage]');if(storage||state.drag.fromId){e.preventDefault();e.dataTransfer.dropEffect=state.drag.fromId?'move':'copy';if(storage)storage.classList.add('dragover')}});
  document.addEventListener('dragleave',e=>{const storage=e.target.closest('[data-storage]');if(storage&&!storage.contains(e.relatedTarget))storage.classList.remove('dragover')});
- document.addEventListener('drop',e=>{const storage=e.target.closest('[data-storage]');document.querySelectorAll('.dragover').forEach(x=>x.classList.remove('dragover'));if(!state.drag)return;const d=state.drag;state.drag=null;if(!storage){if(d.fromId){e.preventDefault();quantityModal({action:'remove',itemId:d.itemId,fromId:d.fromId})}return}e.preventDefault();if(d.fromId===storage.dataset.storage)return;quantityModal({action:d.fromId?'move':'add',itemId:d.itemId,fromId:d.fromId,toId:storage.dataset.storage})});
+ document.addEventListener('drop',e=>{const storage=e.target.closest('[data-storage]');document.querySelectorAll('.dragover').forEach(x=>x.classList.remove('dragover'));if(!state.drag)return;const d=state.drag;state.drag=null;if(!storage){if(d.fromId){e.preventDefault();quantityModal({action:'remove',itemId:d.itemId,fromId:d.fromId,blueprintDescription:d.blueprintDescription})}return}e.preventDefault();if(d.fromId===storage.dataset.storage)return;quantityModal({action:d.fromId?'move':'add',itemId:d.itemId,fromId:d.fromId,toId:storage.dataset.storage,blueprintDescription:d.blueprintDescription})});
  document.addEventListener('dragend',()=>{state.drag=null;document.querySelectorAll('.dragover').forEach(x=>x.classList.remove('dragover'))});
  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 }
