@@ -286,3 +286,22 @@ test('legacy unspecified Blueprint stock stays separate and cloud changes pass v
  f.run("state.modal={kind:'quantity',action:'remove',itemId:'bp',fromId:'storage-0',blueprintDescription:'Rifle'}");await f.run('removeAll()');
  assert.equal(f.ctx.calls[1].args.p_blueprint_description,'Rifle');
 });
+
+
+test('text selection ending on backdrop keeps the dialog; deliberate backdrop click closes it',async()=>{
+ const f=fixture();
+ const overlay={dataset:{action:'close-modal-overlay'}};overlay.closest=()=>overlay;
+ const field={dataset:{}};
+ f.run("setModal('<input />')");
+ const original=f.nodes['#modal-root'].innerHTML;
+ f.events.pointerdown({target:field,button:0});
+ await f.events.click({target:overlay});
+ assert.equal(f.nodes['#modal-root'].innerHTML,original);
+ f.events.pointerdown({target:overlay,button:0});
+ f.events.pointercancel();
+ await f.events.click({target:overlay});
+ assert.equal(f.nodes['#modal-root'].innerHTML,original);
+ f.events.pointerdown({target:overlay,button:0});
+ await f.events.click({target:overlay});
+ assert.equal(f.nodes['#modal-root'].innerHTML,'');
+});
