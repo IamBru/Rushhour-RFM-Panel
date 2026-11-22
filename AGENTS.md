@@ -94,3 +94,5 @@ Add new tabs as distinct sections of the **same RFM Panel** and reuse existing m
 Treat these as durable project requirements. Update `AGENTS.md` when a lasting, approved rule or architecture change occurs, not for every small UI tweak. Do not weaken permissions or delete established requirements without owner approval. Keep instructions repository-scoped and actionable.
 
 - Automatic refreshes must preserve page, catalog, activity and modal scroll positions, including older activity already loaded.
+
+- Only admins may drag storage headers between storage groups. Moving a storage preserves its ID and all stock variants, requires backend admin authorization, and adds an attributed activity entry.

@@ -305,3 +305,26 @@ test('text selection ending on backdrop keeps the dialog; deliberate backdrop cl
  await f.events.click({target:overlay});
  assert.equal(f.nodes['#modal-root'].innerHTML,'');
 });
+
+
+test('admin storage group move preserves storage identity and all stock; members cannot move',async()=>{
+ const f=fixture();f.run("state.data.storage_groups.push({id:'destination',name:'Destination'})");
+ const stock=f.run('JSON.stringify(state.data.stock)'),items=f.run('JSON.stringify(state.data.items)');
+ assert.match(f.run('renderStorage(state.data.storages[0])'),/data-drag-storage/);
+ await f.run("moveStorageToGroup('storage-0','destination')");
+ assert.equal(f.run('state.data.storages[0].storage_group_id'),'destination');
+ assert.equal(f.run('JSON.stringify(state.data.stock)'),stock);
+ assert.equal(f.run('JSON.stringify(state.data.items)'),items);
+ assert.equal(f.run('state.data.logs[0].action'),'storage_moved');
+ const count=f.run('state.data.logs.length');await f.run("moveStorageToGroup('storage-0','destination')");assert.equal(f.run('state.data.logs.length'),count);
+ f.run("state.mode='cloud';state.data.viewer={role:'member'}");
+ assert.doesNotMatch(f.run('renderStorage(state.data.storages[0])'),/data-drag-storage/);
+ await assert.rejects(f.run("moveStorageToGroup('storage-0','local-main')"),/Only admins/);
+});
+test('failed cloud storage move leaves local storage and stock untouched',async()=>{
+ const f=fixture();f.run("state.data.storage_groups.push({id:'destination',name:'Destination'});state.mode='cloud';state.data.viewer={role:'admin'};state.roomId='room'");
+ const before=f.run('JSON.stringify(state.data)');
+ f.ctx.failMove=async(name,args)=>{assert.equal(name,'move_storage_group');assert.equal(args.p_storage,'storage-0');assert.equal(args.p_group,'destination');throw Error('denied')};
+ f.run('rpc=failMove');await assert.rejects(f.run("moveStorageToGroup('storage-0','destination')"),/denied/);
+ assert.equal(f.run('JSON.stringify(state.data)'),before);assert.equal(f.run('state.busy'),false);
+});
