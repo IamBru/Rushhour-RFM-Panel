@@ -190,3 +190,24 @@ test('display scaling persists locally and rejects unsupported values',()=>{
  f.run('applyDisplayScale(100)');assert.equal(f.run('displayScale()'),100);
  saved.rfm_display_scale='invalid';assert.equal(f.run('displayScale()'),100);
 });
+test('category creation is offered only in the admin new-item dropdown, not Settings',()=>{
+ const f=fixture();f.run('newItemModal()');
+ assert(f.nodes['#modal-root'].innerHTML.includes('data-create-category="true"'));
+ assert(f.nodes['#modal-root'].innerHTML.includes('id="new-category-fields" hidden'));
+ f.run('shareModal()');assert(!f.nodes['#modal-root'].innerHTML.includes('Item categories'));
+ assert(!f.nodes['#modal-root'].innerHTML.includes('category-form'));
+ f.run("editEntityModal('item','item-0')");assert(!f.nodes['#modal-root'].innerHTML.includes('data-create-category'));
+ f.run("state.mode='cloud';state.data.viewer={role:'member'}");
+ assert(!f.run("categorySelect('',true)").includes('data-create-category'));
+});
+test('inline category creation selects the category without replacing the item form',async()=>{
+ const f=fixture();const input={value:' Health '},button={disabled:false},fields={hidden:false};
+ const select={options:[{},{}],add(option){this.added=option},focus(){}};
+ const parts={'#new-category-name':input,'[name="category"]':select,'[data-action="create-inline-category"]':button,'#new-category-fields':fields};
+ const form={querySelector:s=>parts[s],draftName:'Bandage',selectedFile:{name:'picture.png'}};
+ f.nodes['#item-form']=form;f.ctx.document.createElement=()=>({});
+ await f.run('createInlineCategory()');
+ assert.equal(select.value,'Health');assert.equal(select.added.textContent,'Health');
+ assert.equal(fields.hidden,true);assert.equal(form.draftName,'Bandage');assert.equal(form.selectedFile.name,'picture.png');
+ assert.equal(button.disabled,false);assert(f.run('categoryNames()').includes('Health'));
+});

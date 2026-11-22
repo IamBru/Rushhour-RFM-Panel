@@ -12,10 +12,13 @@ logo is now 80px square at default scale. No SQL migration is needed for this ch
 
 Apply `supabase/migrations/202611220006_categories_and_logo.sql` once before
 deploying this frontend. Existing item categories populate the configured list.
-Admin Settings supports adding/renaming categories and deleting unused ones.
+Admins create categories through **Create category...** in the new-item category
+dropdown. The inline entry preserves the item draft and selected picture, then
+selects the newly created category. Main Settings no longer includes category
+management; the existing admin-only backend permissions remain unchanged.
 Renaming cascades to item categories; deleting an in-use category is rejected.
 The database foreign key enforces the configured options for all item writes,
-including older clients. With no configured categories, add one in Settings first.
+including older clients. With no configured categories, use Create category in the new-item dropdown.
 
 Admin Settings also accepts a JPG/PNG/WebP logo, resized to at most 160px and
 stored as a bounded image data URL on the existing RFM room. All signed-in members
