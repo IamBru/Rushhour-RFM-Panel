@@ -36,8 +36,8 @@ items. All three preserve prior history and record the actor, deleted identity
 and affected stock quantities. Previously uploaded item photo files may remain
 in the existing bucket; this migration does not delete bucket objects.
 
-Storage Settings replaces the header plus button. An **Add items** button inside
-each storage keeps item selection available to members and mobile users.
+Storage Settings replaces the header plus button. Add stock by dragging catalog items into storages; the separate **Add items**
+button has been removed. Existing stock keeps its quantity controls.
 Storage pictures are compressed to at most 160px and stored as bounded raster
 data URLs in `rfm_storages.image_data` (350,000-character database limit). They
 are returned through the membership-checked snapshot; no new bucket permissions
@@ -108,3 +108,11 @@ Then deploy the frontend through the normal GitHub Desktop commit/push workflow.
 The owner confirmed applying the migration, deploying the frontend, and checking
 that the database contained zero activity logs after clearing. Member and revoked-user
 authorization checks have not been independently verified against production.
+
+## Refresh behavior
+
+Automatic updates preserve page, catalog, activity-list and open-modal scroll
+positions. Catalog and activity rows use stable IDs to keep the visible row in
+place when rows are inserted above it. Already-loaded older logs are fetched again
+from the server rather than being discarded or merged from stale cached history.
+This frontend update needs no new SQL migration.

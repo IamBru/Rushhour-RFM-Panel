@@ -52,7 +52,7 @@ For every privilege-sensitive change, verify both frontend visibility **and** ba
 - Activity history is **admin-only** and should identify the actor, action, item, relevant locations, quantity before/after where available, and timestamp. Preserve historical attribution even after member revocation.
 - Admin-only changes to catalog items/images should remain auditable.
 - Admins may explicitly delete a catalog item and all its stock, a storage and its stock, or a storage group with its child storages and stock after confirmation. These actions preserve prior activity history and add an attributed deletion record. Storage/group deletion must retain master catalog items. This is an explicit exception to preserving the deleted records above.
-- Item settings edit name, category, details and picture. Storage settings edit name and picture; group settings edit the group name. Members retain quantity controls and an Add items action inside each storage.
+- Item settings edit name, category, details and picture. Storage settings edit name and picture; group settings edit the group name. Members retain quantity controls; add new stock by dragging a catalog item into a storage. Storage cards do not have an Add items button.
 - Dropping a stored item outside all storage cards on the page opens the removal quantity prompt; dropping on another storage opens Move. Catalog items dropped outside storages do nothing. Quantity fields start blank.
 - The removal dialog includes Remove all for the selected item/storage pair, using the current database quantity atomically. Deletion confirmations use themed modals. Show deletion logs as readable names and quantities while retaining detailed audit data in the database.
 
@@ -86,3 +86,5 @@ Add new tabs as distinct sections of the **same RFM Panel** and reuse existing m
 ## Maintaining this file
 
 Treat these as durable project requirements. Update `AGENTS.md` when a lasting, approved rule or architecture change occurs, not for every small UI tweak. Do not weaken permissions or delete established requirements without owner approval. Keep instructions repository-scoped and actionable.
+
+- Automatic refreshes must preserve page, catalog, activity and modal scroll positions, including older activity already loaded.

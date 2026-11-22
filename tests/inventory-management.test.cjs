@@ -14,17 +14,17 @@ function fixture(){
  run(script);ctx.realConfirmAction=run('confirmAction');ctx.testConfirmation=()=>confirmed;run('confirmAction=async()=>testConfirmation();state.data=seedData();bind();');
  return {run,ctx,nodes,events,confirm:v=>confirmed=v};
 }
-test('admin controls only appear in their entity headers; members retain Add items',()=>{
+test('admin controls only appear in their entity headers; Add items is removed for all roles',()=>{
  const f=fixture();let c=f.run('renderCatalog()');
  assert(c.indexOf('data-action="delete-entity"')<c.indexOf('data-action="edit-entity"'));
  let s=f.run('renderStorage(state.data.storages[0])');
  assert(s.includes('data-kind="storage"'));assert(!s.includes('data-kind="item"'));
- assert(s.includes('data-action="add-to-storage"'));
+ assert(!s.includes('data-action="add-to-storage"'));
  f.run("state.mode='cloud';state.data.viewer={role:'member'}");
  for(const expression of ['renderCatalog()','renderStorageGroups()']){
   const markup=f.run(expression);assert(!markup.includes('edit-entity'));assert(!markup.includes('delete-entity'));
  }
- assert(f.run('renderStorageGroups()').includes('add-to-storage'));
+ assert(!f.run('renderStorageGroups()').includes('add-to-storage'));
  assert.throws(()=>f.run("editEntityModal('item','item-0')"),/Only admins/);
 });
 test('quantity starts blank and item editor exposes metadata and picture',()=>{
@@ -117,4 +117,30 @@ test('legacy and new deletion logs show names and quantities without database ID
  let text=f.run('activityDescription(entry)');assert(text.includes('Toolbox'));assert(text.includes('3 &times; Crowbar'));assert(!text.includes('00000000'));assert(!text.includes('"before"'));
  f.ctx.entry={action:'item_deleted',detail:JSON.stringify({name:'<script>',stock:[{item:'AK-47',storage:'Toolbox',before:2},{item:'Other',storage:'Empty',before:0}]})};
  text=f.run('activityDescription(entry)');assert(text.includes('&lt;script&gt;'));assert(text.includes('2 &times; AK-47'));assert(!text.includes('Empty'));
+});
+test('scroll restoration keeps visible rows anchored and restores page and modal offsets',()=>{
+ const f=fixture();let inserted=0;
+ const panel={dataset:{scrollKey:'activity'},scrollTop:240,scrollLeft:3,getBoundingClientRect:()=>({top:100}),querySelectorAll:()=>[row]};
+ const row={dataset:{scrollAnchor:'log-10'},getBoundingClientRect:()=>({top:350+inserted-panel.scrollTop,bottom:390+inserted-panel.scrollTop})};
+ const modal={dataset:{scrollKey:'modal'},scrollTop:75,scrollLeft:0,getBoundingClientRect:()=>({top:20}),querySelectorAll:()=>[]};
+ f.ctx.document.querySelectorAll=()=>[panel,modal];
+ f.ctx.window.scrollX=0;f.ctx.window.scrollY=500;let page;
+ f.ctx.window.scrollTo=p=>page=p;
+ f.run('var savedScroll=captureScroll()');
+ inserted=80;panel.scrollTop=0;panel.scrollLeft=0;modal.scrollTop=0;
+ f.run('restoreScroll(savedScroll)');
+ assert.equal(panel.scrollTop,320);assert.equal(panel.scrollLeft,3);assert.equal(modal.scrollTop,75);assert.equal(page.top,500);
+});
+test('sync reloads older history instead of truncating it and does not resurrect cleared logs',async()=>{
+ const f=fixture();
+ f.run("state.mode='cloud';state.roomId='room';state.data.viewer={role:'admin'};state.data.logs=Array.from({length:300},(_,i)=>({id:300-i}));render=()=>{}");
+ const fresh=Array.from({length:301},(_,i)=>({id:301-i}));let pages=0;
+ f.ctx.fakeRpc=async(name,args)=>{
+  if(name==='get_snapshot')return {viewer:{role:'admin'},logs:fresh.slice(0,150)};
+  pages++;return fresh.slice(args.p_offset,args.p_offset+args.p_limit);
+ };
+ f.run('rpc=fakeRpc');await f.run('refreshCloud(true)');
+ assert.equal(f.run('state.data.logs.length'),301);assert.equal(f.run('state.data.logs.at(-1).id'),1);assert.equal(pages,1);
+ f.ctx.fakeRpc=async()=>({viewer:{role:'admin'},logs:[]});f.run('rpc=fakeRpc');
+ await f.run('refreshCloud(true)');assert.equal(f.run('state.data.logs.length'),0);
 });
