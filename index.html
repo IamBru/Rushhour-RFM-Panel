@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d0a19">
+  <title>RFM Storage • Inventory Board</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0c0a15;--panel:#171327;--panel2:#201a33;--panel3:#261e3d;--stroke:#39304d;--text:#f7f4ff;--muted:#a69bbd;--accent:#a985ff;--accent2:#d5b7ff;--green:#6addbb;--red:#fb8b9b;--shadow:0 20px 60px #0004; }
+    * {box-sizing:border-box} html,body{margin:0;min-height:100%;background:radial-gradient(ellipse at 78% -20%,#33215c90,transparent 42%),var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
+    button,input,select{font:inherit} button{cursor:pointer} button:disabled{cursor:not-allowed;opacity:.5} svg{flex-shrink:0}
+    .shell{max-width:1650px;margin:auto;padding:24px clamp(14px,3vw,44px) 48px}
+    .top{display:flex;gap:16px;justify-content:space-between;align-items:center;padding-bottom:22px;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:14px}.mark{background:linear-gradient(135deg,#b77efc,#592db7);width:49px;height:49px;border-radius:16px;display:grid;place-items:center;font-weight:950;font-size:20px;box-shadow:0 4px 30px #9a5cff60;letter-spacing:-2px;transform:rotate(-5deg)}
+    .brand h1{font-size:23px;margin:0;letter-spacing:-.8px}.subtitle{color:var(--muted);font-size:12px;margin-top:4px}
+    .top-actions,.flex{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.btn{border:1px solid var(--stroke);border-radius:11px;padding:10px 14px;background:#211a33;color:var(--text);font-weight:650;font-size:13px;transition:.12s}.btn:hover{border-color:#9c79d1;background:#302246}.btn.primary{background:var(--accent);color:#170f28;border-color:var(--accent)}.btn.primary:hover{background:#c1a2ff}.btn.soft{background:#a884ff1c;color:#d7c1ff;border-color:#a884ff48}.btn.ghost{background:transparent}.btn.icon{width:34px;height:34px;padding:0;display:grid;place-items:center;font-size:19px}.btn.tiny{padding:5px 9px;border-radius:8px;font-size:12px}.btn.danger{color:#ffb2bb;border-color:#7a4159}.btn.full{width:100%}
+    .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--stroke);border-radius:99px;padding:7px 11px;color:#d4cbe5;font-size:12px;background:#1d172c}.dot{width:7px;height:7px;border-radius:50%;background:var(--green)}.dot.local{background:#eab66b}
+    .notice{margin:4px 0 22px;padding:13px 16px;background:#af86ff12;border:1px solid #8b67dc56;border-radius:14px;display:flex;gap:12px;justify-content:space-between;align-items:center;font-size:13px;color:#d6c6f8}
+    .statbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:24px}.stat{padding:17px 19px;border:1px solid var(--stroke);background:linear-gradient(145deg,#211932,#171322);border-radius:16px;min-width:0}.stat-label{color:var(--muted);font-size:12px}.stat-value{font-weight:800;font-size:27px;letter-spacing:-1px;margin:3px 0 0}.stat-desc{font-size:11px;color:#7f7597;margin-top:4px}
+    .dashboard{display:grid;grid-template-columns:320px minmax(0,1fr);gap:20px;align-items:start}.panel{background:#151121d9;border:1px solid var(--stroke);border-radius:18px;box-shadow:var(--shadow)}
+    .catalog{position:sticky;top:16px;overflow:hidden}.catalog.dragover{border:2px dashed #f59cb1;background:#352037}.catalog.dragover::after{content:"Drop here to remove from storage";position:absolute;inset:auto 10px 10px 10px;padding:14px;text-align:center;border-radius:10px;background:#6b2d49;color:#ffe2e7;font-weight:750;font-size:12px;pointer-events:none;z-index:3}.panel-head{padding:19px 18px 15px;border-bottom:1px solid var(--stroke)}.title{font-weight:750;font-size:16px;letter-spacing:-.25px}.help{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}.search{width:100%;padding:11px 12px;border:1px solid #403451;background:#100d1b;color:var(--text);border-radius:11px;outline:none}.search:focus,.field:focus{border-color:var(--accent);box-shadow:0 0 0 3px #a985ff20}.search::placeholder,.field::placeholder{color:#776c8d}
+    .filters{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}.chip{border:1px solid #3b324b;background:#201a30;color:#bcb0d2;padding:6px 10px;border-radius:100px;font-size:11px;font-weight:600}.chip.active{background:#ac83ff29;color:#e2d1ff;border-color:#a985ff7a}
+    .catalog-items{max-height:610px;overflow-y:auto;padding:10px}.item{border:1px solid transparent;display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;transition:background .1s;min-width:0}.item:hover{background:#282037;border-color:#3d3152}.item[draggable=true]{cursor:grab}.item:active{cursor:grabbing}.item .avatar{width:39px;height:39px;border-radius:10px;display:grid;place-items:center;background:#a985ff22;border:1px solid #a985ff35;color:#cbb1ff;font-size:20px}.item-main{flex:1;min-width:0}.item-name{font-size:13px;font-weight:650;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.item-detail{font-size:11px;color:#9588ae;margin-top:3px}.qty{font-weight:800;color:#d4c0ff;font-size:13px}.catalog-foot{padding:14px;border-top:1px solid var(--stroke)}
+    .board-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin:0 0 14px;flex-wrap:wrap}.tabs{display:flex;gap:5px;padding:4px;border-radius:12px;border:1px solid #342b48;background:#151121}.tab{background:transparent;color:#9589af;padding:9px 15px;border:0;border-radius:8px;font-size:13px;font-weight:700}.tab.active{background:#3a2d56;color:#f1e9ff}.board-title{display:flex;align-items:center;gap:10px}
+    .storages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.storage{background:linear-gradient(155deg,#211b34,#171323);border:1px solid #423653;border-radius:16px;overflow:hidden;min-height:192px;transition:.15s}.storage.dragover{background:#36244d;border:1px dashed #c4a3ff;box-shadow:0 0 0 3px #a985ff20}.storage-header{padding:16px;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #382f4a}.storage-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#aa86ff24;color:#ceb5ff}.storage-name{font-size:14px;font-weight:750}.storage-meta{font-size:11px;color:var(--muted);margin-top:4px}.storage-list{min-height:110px;padding:7px 9px 13px}.stock-row{display:flex;gap:10px;align-items:center;padding:10px 8px;border-bottom:1px solid #ffffff0c;border-radius:9px;min-width:0}.stock-row:hover{background:#ffffff08}.stock-row[draggable=true]{cursor:grab}.stock-name{font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.stock-qty{background:#ac85ff2a;color:#decaff;font-weight:800;min-width:31px;text-align:center;padding:4px 5px;border-radius:8px;font-size:12px}.stock-buttons{display:flex;gap:4px}.stock-buttons button{border:1px solid #534064;background:#30243e;color:#e9dbff;width:26px;height:26px;border-radius:8px;font-size:16px;line-height:1}.stock-buttons button:hover{background:#5a3c80}.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px;min-height:108px;color:#847896;font-size:12px;border:1px dashed #504366;border-radius:10px;margin:6px;padding:12px}.empty-icon{font-size:25px;color:#9d82cf}
+    .avatar.photo, .stock-photo.photo{padding:0;overflow:hidden;background:#141023}
+    .avatar.photo img,.stock-photo.photo img{width:100%;height:100%;object-fit:cover;display:block}
+    .photo-button{border:1px solid #594673;background:#21192f;color:#d8c2ff;border-radius:9px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;flex-shrink:0;font-size:15px}
+    .photo-button:hover{background:#392451;border-color:#ac8df8}
+    .stock-photo{width:30px;height:30px;border-radius:8px;background:#ac83ff18;display:grid;place-items:center;color:#9a84b5;flex-shrink:0;font-size:17px}
+    .upload-preview{border:1px dashed #685286;background:#171021;border-radius:12px;min-height:128px;display:flex;align-items:center;justify-content:center;padding:10px;margin-top:12px;color:#a795c4;font-size:12px;text-align:center;overflow:hidden}
+    .upload-preview img{max-height:190px;max-width:100%;object-fit:contain;border-radius:9px}
+    .file-input{font-size:12px;color:#c2b4d5}
+    .file-input::file-selector-button{border:1px solid #775a9b;background:#38274f;color:#ecdcff;padding:8px 10px;border-radius:8px;margin-right:10px;cursor:pointer}
+    .activity{overflow:hidden}.activity-tools{display:flex;gap:8px;padding:15px 16px;border-bottom:1px solid var(--stroke);align-items:center;flex-wrap:wrap}.activity-list{max-height:700px;overflow:auto}.activity-row{padding:14px 18px;display:flex;gap:12px;border-bottom:1px solid #ffffff0b}.bubble{width:34px;height:34px;flex-shrink:0;border-radius:50%;display:grid;place-items:center;background:#a785ff22;color:#ceadff;font-weight:800}.act-body{min-width:0;flex:1}.act-title{font-size:13px;line-height:1.5}.act-title strong{color:#e5d8ff}.act-time{font-size:11px;color:#867b98;margin-top:4px}.act-symbol{font-size:12px;font-weight:800;border-radius:6px;padding:2px 6px;margin-left:7px}.act-symbol.plus{background:#2e7a6045;color:#80f2c2}.act-symbol.minus{background:#8c3e5840;color:#ffb0c2}.act-symbol.move{background:#8361c53a;color:#d0b4ff}
+    .overlay{position:fixed;inset:0;z-index:20;background:#05030bc9;backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:16px}.modal{background:linear-gradient(135deg,#241b39,#171225);border:1px solid #5b4778;border-radius:19px;width:min(100%,460px);max-height:93vh;overflow:auto;padding:24px;box-shadow:0 30px 100px #000b}.modal h2{font-size:19px;letter-spacing:-.3px;margin:0 0 6px}.modal p{font-size:13px;color:var(--muted);line-height:1.6;margin:5px 0 18px}.field-label{display:block;font-size:12px;color:#c5b5dd;font-weight:650;margin:13px 0 6px}.field{width:100%;padding:12px 13px;background:#110d1c;border:1px solid #514263;color:white;border-radius:11px;outline:none}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}.tip{color:#a08fbf;font-size:11px;line-height:1.5;margin-top:10px}.setup-card{background:#221c35;border:1px solid #493761;border-radius:12px;padding:13px;margin-top:14px;font-size:12px;color:#c6b9dc;line-height:1.6}.setup-card a{color:#d3b4ff}
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#3c2c58;color:#fff;border:1px solid #8d64d4;box-shadow:var(--shadow);padding:12px 18px;border-radius:12px;z-index:30;font-size:13px;max-width:95vw;text-align:center}.toast.error{background:#512437;border-color:#cc6687}.busy{opacity:.75;pointer-events:none}
+    .guide{display:flex;gap:10px;align-items:center;color:#9588ab;font-size:12px}.group-panel{max-width:680px;margin:8vh auto;background:#181327;border:1px solid var(--stroke);padding:30px;border-radius:20px}.group-panel h2{margin:0;font-size:25px}.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.join-card{background:#231a37;border:1px solid #4b385f;border-radius:14px;padding:20px}.join-card h3{margin:0 0 8px}.join-card p{color:var(--muted);font-size:12px;line-height:1.6}
+    footer{font-size:11px;color:#6e6382;text-align:center;margin-top:28px}
+    @media (max-width:1020px){.dashboard{grid-template-columns:280px 1fr}.storages{grid-template-columns:1fr}}
+    @media (max-width:700px){.shell{padding:15px 12px 30px}.dashboard{grid-template-columns:1fr}.catalog{position:static}.catalog-items{max-height:270px}.storages{grid-template-columns:1fr}.statbar{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:13px}.stat-value{font-size:23px}.two{grid-template-columns:1fr}.top-actions{width:100%}.notice{align-items:flex-start;flex-direction:column}.group-panel{padding:18px}.stock-buttons button{width:30px;height:30px}}
+  </style>
+</head>
+<body><main id="app" class="shell"></main><div id="modal-root"></div><div id="toast-root"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+// To publish a shared app, put your Supabase URL and *publishable/anon* key here.
+// Never use a Supabase service_role or secret API key in this page.
+const CONFIG = { SUPABASE_URL: "https://txkdglpakojrotnmsaos.supabase.co/", SUPABASE_ANON_KEY: "sb_publishable_hx9d4Nd-tOFGusFEv4md7w_xQxNlb7e" };
+const $ = s => document.querySelector(s);
+const esc = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'id-'+Math.random().toString(36).slice(2)+Date.now();
+const initialItems = [
+ ['IZH-81','Shotguns','12 Gauge'],['Ithaca 37','Shotguns','12 Gauge'],['Heavy Shotgun','Shotguns','12 Gauge'],['Bullpup Shotgun','Shotguns','12 Gauge'],['Double Barrel Shotgun','Shotguns','12 Gauge'],
+ ['Beretta M9','Pistols','9mm'],['Fn Fnx-45','Pistols','.45 ACP'],['Desert Eagle','Pistols','.50 AE'],['Enterprise Wide Body 1911A','Pistols','.45 ACP'],['M1911','Pistols','.45 ACP'],['Colt 1911','Pistols','9mm'],['Colt Python','Pistols','.44 magnum'],['SNS Pistol','Pistols','0.38'],['SNS Pistol MK II','Pistols','0.38'],['Glock','Pistols','9mm']
+];
+const initialStock = [
+ [0,0,9],[0,1,1],[0,2,2],[1,2,1],[1,3,7],[1,4,4],[3,1,1],[4,1,1],[5,1,7],[5,2,4],[5,3,1],[6,1,6],[6,2,7],[6,3,21],[7,1,2],[7,2,1],[8,0,4],[8,2,2],[9,1,1],[10,3,4],[11,1,1],[12,1,2],[12,2,1],[12,3,2],[13,3,1],[14,3,2]
+];
+function seedData(){
+ const items = initialItems.map(([name,category,detail],i)=>({id:'item-'+i,name,category,detail}));
+ const storages = ['Gun Rack 1','Gun Rack 2','Gun Rack 3','Gun Stash','Utilities'].map((name,i)=>({id:'storage-'+i,name}));
+ return {room:{id:'local',name:'RFM Inventory',join_code:''},items,storages,stock:initialStock.map(([a,b,q])=>({item_id:items[a].id,storage_id:storages[b].id,quantity:q})),logs:[],members:[]};
+}
+let state = {mode:'local',data:null,client:null,roomId:null,name:localStorage.getItem('rfm_name')||'',search:'',filter:'All',tab:'storages',logSearch:'',logPage:0,busy:false,lastSync:null,modal:null,drag:null};
+function localSave(){localStorage.setItem('rfm_local',JSON.stringify(state.data));}
+function toast(msg,error=false){const el=$('#toast-root');el.innerHTML=`<div class="toast ${error?'error':''}">${esc(msg)}</div>`;clearTimeout(window._toastTimeout);window._toastTimeout=setTimeout(()=>el.innerHTML='',3200)}
+function icon(cat){return cat==='Shotguns'?'◈':cat==='Pistols'?'◇':'▦'}
+const PHOTO_BUCKET = 'rfm-item-images';
+function imageUrl(item){
+ if(item?.image_data && typeof item.image_data==='string' && /^data:image\/(webp|jpeg|png);base64,/.test(item.image_data)) return item.image_data;
+ if(state.mode==='cloud' && item?.image_path && state.client) return state.client.storage.from(PHOTO_BUCKET).getPublicUrl(item.image_path).data.publicUrl;
+ return '';
+}
+function itemThumb(item,small=false){
+ const url=imageUrl(item),klass=small?'stock-photo':'avatar';
+ return `<span class="${klass}${url?' photo':''}">${url?`<img src="${esc(url)}" alt="" loading="lazy">`:icon(item.category)}</span>`;
+}
+function previewImage(url){const e=$('#image-preview');if(e)e.innerHTML=url?`<img alt="Selected item image preview" src="${esc(url)}">`:'No image selected';}
+async function compressPhoto(file){
+ if(!file || !['image/jpeg','image/png','image/webp'].includes(file.type)) throw Error('Choose a JPG, PNG or WebP image');
+ if(file.size>12*1024*1024)throw Error('Image is too large (12 MB maximum before compression)');
+ const temp=URL.createObjectURL(file);
+ try{
+  const img=new Image();img.src=temp;await img.decode();
+  const scale=Math.min(1,540/Math.max(img.naturalWidth,img.naturalHeight));
+  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+  const ctx=canvas.getContext('2d');if(!ctx)throw Error('Image processing unavailable');
+  ctx.fillStyle='#21182f';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',.77));
+  if(!blob || blob.type!=='image/webp'){
+   const jpg=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.75));
+   if(!jpg)throw Error('Unable to compress image');
+   return {blob:jpg,extension:'jpg'};
+  }
+  if(blob.size>950000)throw Error('Compressed picture is still too large; use a smaller image');
+  return {blob,extension:'webp'};
+ }finally{URL.revokeObjectURL(temp)}
+}
+function blobDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error('Could not load image'));r.readAsDataURL(blob)})}
+async function saveImage(itemId,file){
+ const item=state.data.items.find(x=>x.id===itemId);if(!item)throw Error('Item not found');
+ if(!isAdmin())throw Error('Only admins can change item images');
+ const compressed=file?await compressPhoto(file):null;
+ if(state.mode==='local'){
+  const prev=item.image_data;item.image_data=compressed?await blobDataUrl(compressed.blob):null;
+  try{localSave()}catch(e){item.image_data=prev;throw Error('This browser is out of local space. Connect a shared group to keep more images.');}
+  logEntry(compressed?'image_updated':'image_removed',item.name,'','',0,compressed?'Changed item photo':'Removed item photo');localSave();render();return;
+ }
+ let path=null;
+ if(compressed){
+  path=`${state.roomId}/${itemId}/${uid()}.${compressed.extension}`;
+  const {error}=await state.client.storage.from(PHOTO_BUCKET).upload(path,compressed.blob,{contentType:compressed.blob.type,upsert:false});
+  if(error)throw new Error('Upload failed: '+error.message);
+ }
+ try{await rpc('set_item_image',{p_room:state.roomId,p_item:itemId,p_path:path});}
+ catch(e){if(path)await state.client.storage.from(PHOTO_BUCKET).remove([path]).catch(()=>{});throw e;}
+ if(item.image_path && item.image_path!==path)await state.client.storage.from(PHOTO_BUCKET).remove([item.image_path]).catch(()=>{});
+ await refreshCloud();
+}
+
+function total(itemId){return state.data.stock.filter(x=>x.item_id===itemId).reduce((s,x)=>s+x.quantity,0)}
+function stockQty(itemId,storageId){return state.data.stock.find(x=>x.item_id===itemId&&x.storage_id===storageId)?.quantity||0}
+function currentName(){return state.mode==='cloud'&&state.roomId ? (state.data?.viewer?.name||'Member') : (state.name.trim()||'You')}
+function isAdmin(){return state.mode==='local'||state.data?.viewer?.role==='admin'}
+function dateText(s){return new Date(s).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}
+function logEntry(action, item_name='',from_name='',to_name='',quantity=0,detail=''){
+ const logs=state.data.logs; logs.unshift({id:Date.now()+Math.random(),actor_name:currentName(),action,item_name,from_name,to_name,quantity,detail,created_at:new Date().toISOString()});
+}
+function demoChange(action,itemId,fromId,toId,qty){
+ const d=state.data,item=d.items.find(x=>x.id===itemId);let from=fromId?d.storages.find(x=>x.id===fromId):null,to=toId?d.storages.find(x=>x.id===toId):null;
+ if(!item)throw Error('Item not found'); if(!Number.isInteger(qty)||qty<1)throw Error('Enter a positive quantity');
+ if(action!=='add'){const row=d.stock.find(x=>x.item_id===itemId&&x.storage_id===fromId);if(!row||row.quantity<qty)throw Error('Not enough items in that storage');row.quantity-=qty;d.stock=d.stock.filter(x=>x.quantity>0)}
+ if(action!=='remove'){let row=d.stock.find(x=>x.item_id===itemId&&x.storage_id===toId);if(row)row.quantity+=qty;else d.stock.push({item_id:itemId,storage_id:toId,quantity:qty})}
+ logEntry(action,item.name,from?.name||'',to?.name||'',qty);localSave();
+}
+function render(){
+ const app=$('#app');const d=state.data;
+ if(state.mode==='cloud' && !state.roomId){app.innerHTML=renderHeader(false)+renderGroupGate()+renderFooter();return}
+ const t=d.stock.reduce((s,x)=>s+x.quantity,0);const populated=d.stock.filter(x=>x.quantity>0).length;
+ app.innerHTML=`${renderHeader(true)}
+ ${state.mode==='local'?`<div class="notice"><span><b>Private demo</b> — Changes are saved only on this device. Connect a group to let everyone edit together and see the same logs.</span><button class="btn soft tiny" data-action="configure">Enable group sharing</button></div>`:''}
+ <div class="statbar">
+   <div class="stat"><div class="stat-label">Total items in storage</div><div class="stat-value">${t.toLocaleString()}</div><div class="stat-desc">Across every location</div></div>
+   <div class="stat"><div class="stat-label">Storage locations</div><div class="stat-value">${d.storages.length}</div><div class="stat-desc">Drag to move between them</div></div>
+   <div class="stat"><div class="stat-label">Item types</div><div class="stat-value">${d.items.length}</div><div class="stat-desc">${populated} occupied item slots</div></div>
+   ${isAdmin()?`<div class="stat"><div class="stat-label">Changes recorded</div><div class="stat-value">${d.logs.length}${state.mode==='cloud'&&d.logs.length===150?'+':''}</div><div class="stat-desc">Admin-only activity history</div></div>`:`<div class="stat"><div class="stat-label">Your access</div><div class="stat-value" style="font-size:20px">Member</div><div class="stat-desc">Inventory access enabled</div></div>`}
+ </div>
+ <div class="dashboard">
+   <aside class="panel catalog">
+     <div class="panel-head"><div class="flex" style="justify-content:space-between"><div class="title">All items</div><button class="btn icon" data-action="new-item" title="Add new item">+</button></div>
+       <div class="help">Drag into a storage to add · drag back here to remove.</div>
+       <input class="search" id="item-search" placeholder="Search items..." value="${esc(state.search)}" aria-label="Search items" style="margin-top:15px">
+       <div class="filters">${['All',...new Set(d.items.map(x=>x.category))].map(c=>`<button class="chip ${state.filter===c?'active':''}" data-action="filter" data-filter="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+     </div>
+     <div class="catalog-items" id="catalog-items">${renderCatalog()}</div>
+     <div class="catalog-foot"><button class="btn soft full" data-action="new-item">+ Add item type</button></div>
+   </aside>
+   <section>
+     <div class="board-head"><div class="board-title"><div class="tabs"><button class="tab ${state.tab==='storages'?'active':''}" data-action="tab" data-tab="storages">Storage board</button>${isAdmin()?`<button class="tab ${state.tab==='activity'?'active':''}" data-action="tab" data-tab="activity">Activity log</button>`:''}</div></div>
+     <div class="flex">${state.tab==='storages'?'<button class="btn soft" data-action="new-storage">+ New storage</button>':(isAdmin()?'<button class="btn soft" data-action="export-log">Export log CSV</button>':'')}</div></div>
+     ${state.tab==='storages'?`<div class="guide" style="margin-bottom:14px"><span>↔</span> Drag items between locations or back to All items to remove. On mobile, tap + / −.</div><div class="storages">${d.storages.map(renderStorage).join('')}</div>`:(isAdmin()?renderActivity():'<div class="empty">Admins only</div>')}
+   </section>
+ </div>${renderFooter()}`;
+}
+function renderHeader(showActions){return `<header class="top"><div class="brand"><div class="mark">RFM</div><div><h1>Storage Board</h1><div class="subtitle">${esc(state.data?.room?.name||'Simple shared inventory')}</div></div></div>
+ <div class="top-actions"><span class="pill"><i class="dot ${state.mode==='local'?'local':''}"></i>${state.mode==='cloud'?'Shared group · syncs every 5s':'Local demo'}</span>
+ ${showActions?`<button class="btn ghost" data-action="profile">👤 ${esc(currentName())}</button><button class="btn ghost" data-action="export">↓ Backup</button>${state.mode==='cloud'?(isAdmin()?'<button class="btn ghost" data-action="share">⚙ Members & invites</button>':''):'<button class="btn ghost" data-action="configure">⚙ Sharing</button>'}`:'<button class="btn ghost" data-action="configure">⚙ Settings</button>'}</div></header>`}
+function renderFooter(){return `<footer>RFM Storage Board · Item pictures · Drag-and-drop inventory · Every change is logged ${state.mode==='cloud'?'in your group database':'in this browser'}.</footer>`}
+function renderCatalog(){let items=state.data.items.filter(x=>(state.filter==='All'||x.category===state.filter)&&(x.name+' '+x.category+' '+x.detail).toLowerCase().includes(state.search.toLowerCase()));
+return items.length?items.map(x=>`<div class="item" draggable="true" data-drag-item="${esc(x.id)}" title="Drag into a storage location">${itemThumb(x)}<div class="item-main"><div class="item-name">${esc(x.name)}</div><div class="item-detail">${esc(x.detail||x.category)}</div></div><span class="qty">${total(x.id)}</span>${isAdmin()?`<button class="photo-button" data-action="edit-image" data-item="${esc(x.id)}" title="${imageUrl(x)?'Change':'Add'} item photo" aria-label="Edit ${esc(x.name)} photo">📷</button>`:''}<button class="btn tiny" data-action="add-catalog" data-item="${esc(x.id)}" title="Add to storage">+</button></div>`).join(''):'<div class="empty">No items match your search.</div>'}
+function renderStorage(storage){const rows=state.data.stock.filter(x=>x.storage_id===storage.id&&x.quantity>0).map(x=>({stock:x,item:state.data.items.find(i=>i.id===x.item_id)})).filter(x=>x.item).sort((a,b)=>a.item.name.localeCompare(b.item.name));const n=rows.reduce((s,x)=>s+x.stock.quantity,0);
+return `<section class="storage" data-storage="${esc(storage.id)}"><div class="storage-header"><div class="flex"><div class="storage-icon">▣</div><div><div class="storage-name">${esc(storage.name)}</div><div class="storage-meta">${n} units · ${rows.length} item types</div></div></div><button class="btn icon" data-action="add-to-storage" data-storage-id="${esc(storage.id)}" title="Add item">+</button></div>
+<div class="storage-list">${rows.length?rows.map(({stock,item})=>`<div class="stock-row" draggable="true" data-drag-item="${esc(item.id)}" data-drag-from="${esc(storage.id)}">${itemThumb(item,true)}<div class="stock-name" title="${esc(item.name)}">${esc(item.name)}</div><span class="stock-qty">${stock.quantity}</span><div class="stock-buttons"><button data-action="move-one" data-item="${esc(item.id)}" data-storage-id="${esc(storage.id)}" title="Move to another storage">↗</button><button data-action="add-one" data-item="${esc(item.id)}" data-storage-id="${esc(storage.id)}" title="Add quantity">+</button><button data-action="remove-one" data-item="${esc(item.id)}" data-storage-id="${esc(storage.id)}" title="Remove from inventory">−</button></div></div>`).join(''):`<div class="empty"><div class="empty-icon">↓</div>Drop an item here<br>or tap + to add</div>`}</div></section>`}
+function activityDescription(l){const name=esc(l.item_name),q=esc(l.quantity);switch(l.action){case 'add':return `added <strong>${q} × ${name}</strong> to <strong>${esc(l.to_name)}</strong>`;case 'remove':return `removed <strong>${q} × ${name}</strong> from <strong>${esc(l.from_name)}</strong>`;case 'move':return `moved <strong>${q} × ${name}</strong> from <strong>${esc(l.from_name)}</strong> to <strong>${esc(l.to_name)}</strong>`;case 'image_updated':return `added or changed the photo for <strong>${name}</strong>`;case 'image_removed':return `removed the photo for <strong>${name}</strong>`;case 'item_created':return `created item <strong>${name}</strong>`;case 'storage_created':return `created storage <strong>${esc(l.to_name)}</strong>`;case 'member_joined':return 'joined the group';case 'room_created':return 'created the group';default:return esc(l.detail||l.action)}}
+function renderActivity(){const arr=state.data.logs.filter(l=>(l.actor_name+' '+l.item_name+' '+l.from_name+' '+l.to_name+' '+l.action).toLowerCase().includes(state.logSearch.toLowerCase()));return `<section class="panel activity"><div class="activity-tools"><input class="search" style="flex:1;min-width:190px" id="log-search" placeholder="Search by person, item or storage..." value="${esc(state.logSearch)}" aria-label="Search activity"></div><div class="activity-list">${arr.length?arr.map(l=>`<div class="activity-row"><div class="bubble">${esc((l.actor_name||'?').slice(0,1).toUpperCase())}</div><div class="act-body"><div class="act-title"><strong>${esc(l.actor_name)}</strong> ${activityDescription(l)} ${['add','remove','move'].includes(l.action)?`<span class="act-symbol ${l.action==='add'?'plus':l.action==='remove'?'minus':'move'}">${l.action.toUpperCase()}</span>`:''}</div><div class="act-time">${dateText(l.created_at)}</div></div></div>`).join(''):'<div class="empty" style="margin:18px">No activity found.</div>'}</div>${state.mode==='cloud'&&state.data.logs.length>=150?`<div class="catalog-foot"><button class="btn full" data-action="load-older">Load older changes</button></div>`:''}</section>`}
+function renderGroupGate(){return `<div class="group-panel"><h2>Start or join a shared inventory</h2><p class="help">Admins issue one-time invitations. Each person chooses a name once; actions are tied to their session identity. No email or password needed.</p>${typeof location!=='undefined'&&location.protocol==='file:'?`<div class="setup-card" style="margin-top:14px"><b>Owner setup: Publish first</b><br>Your anonymous member identity is saved per website address. Download the connected file, publish it on GitHub Pages, and <b>create your RFM group on the published website</b> so your admin access stays there.<br><br><button class="btn soft full" type="button" data-action="publish-file">↓ Download ready-to-publish website</button></div>`:''}<div class="two" style="margin-top:22px"><div class="join-card"><h3>Create a group</h3><p>Create your board. You become the first administrator automatically.</p><form id="create-room-form"><label class="field-label">Your name</label><input class="field" name="display_name" maxlength="40" value="${esc(state.name)}" placeholder="Your name" required><label class="field-label">Group name</label><input class="field" name="group_name" maxlength="80" placeholder="RFM Inventory" value="RFM Inventory" required><label class="field-label" style="display:flex;align-items:center;gap:9px"><input type="checkbox" name="seed" checked> Start with items from screenshot</label><button class="btn primary full" style="margin-top:20px" type="submit">Create group</button></form></div><div class="join-card"><h3>Join a group</h3><p>Enter the one-time private code an admin sent you.</p><form id="join-room-form"><label class="field-label">Your name</label><input class="field" name="display_name" maxlength="40" value="${esc(state.name)}" placeholder="Your name" required><label class="field-label">One-time invitation code</label><input class="field" name="code" placeholder="Paste private invitation code" required><button class="btn primary full" style="margin-top:20px" type="submit">Join group</button></form></div></div><div style="margin-top:17px"><button class="btn ghost" data-action="use-demo">← Try the private demo instead</button></div></div>`}
+function setModal(html){$('#modal-root').innerHTML=`<div class="overlay" data-action="close-modal-overlay"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;setTimeout(()=>$('#modal-root input:not([type=hidden])')?.focus(),0)}
+function closeModal(){$('#modal-root').innerHTML=''}
+function modalActions(label='Save'){return `<div class="modal-actions"><button class="btn" type="button" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">${esc(label)}</button></div>`}
+function quantityModal({action,itemId,fromId='',toId=''}){const d=state.data,item=d.items.find(x=>x.id===itemId);if(!item)return;const max=fromId?stockQty(itemId,fromId):1000000;const options=d.storages.filter(x=>action!=='move'||x.id!==fromId).map(x=>`<option value="${esc(x.id)}" ${x.id===toId?'selected':''}>${esc(x.name)}</option>`).join('');if((action==='add'||action==='move')&&!options){toast('Add another storage first',true);return}
+ const label=action==='add'?'Add to storage':action==='move'?'Move between storages':'Remove from inventory';
+ state.modal={kind:'quantity',action,itemId,fromId,toId};setModal(`<h2>${label}</h2><p><b>${esc(item.name)}</b> ${fromId?`· ${max} available in ${esc(d.storages.find(x=>x.id===fromId)?.name)}`:'· Choose where to store it'}</p><form id="quantity-form">
+ ${action!=='remove'?`<label class="field-label">${action==='move'?'Move to':'Storage location'}</label><select class="field" name="to" required>${options}</select>`:''}
+ <label class="field-label">Quantity</label><input class="field" name="qty" type="number" min="1" max="${max}" value="1" required>${modalActions(action==='add'?'Add items':action==='move'?'Move items':'Remove items')}</form>`)}
+function chooseItemModal(storageId){state.modal={kind:'choose',storageId};setModal(`<h2>Add item to ${esc(state.data.storages.find(x=>x.id===storageId)?.name)}</h2><p>Choose an item, then enter how many to add.</p><div style="max-height:340px;overflow:auto">${state.data.items.map(x=>`<button class="btn full" style="text-align:left;margin:4px 0" data-action="choose-item" data-item="${esc(x.id)}">${esc(x.name)} <span style="float:right;color:#b9a5d5">${esc(x.detail)}</span></button>`).join('')}</div><div class="modal-actions"><button class="btn" data-action="close-modal">Cancel</button><button class="btn soft" data-action="new-item">+ Create item</button></div>`)}
+function setupModal(){let url=localStorage.getItem('rfm_url')||CONFIG.SUPABASE_URL,key=localStorage.getItem('rfm_key')||CONFIG.SUPABASE_ANON_KEY;
+ setModal(`<h2>Connect a shared group</h2><p>One-time setup for the person hosting the inventory. You can try everything without this, but sharing requires a free database.</p><form id="connect-form"><label class="field-label">Supabase project URL</label><input class="field" name="url" value="${esc(url)}" placeholder="https://xxxx.supabase.co" required><label class="field-label">Supabase publishable / anon key</label><input class="field" name="key" value="${esc(key)}" placeholder="sb_publishable_... or eyJ..." required>${modalActions('Connect')}</form><div class="setup-card"><b>Setup:</b> Create a free project at <a href="https://supabase.com" target="_blank" rel="noopener noreferrer">Supabase</a>, enable <b>Anonymous Sign-ins</b> in Authentication → Providers, run <b>supabase_setup_admin.sql</b> in SQL Editor, and paste the Project URL and publishable key here.<br><br>To share one link without each person setting it up, put these two public values in <b>CONFIG</b> at the beginning of this HTML file and host it as a static website. <b>Never paste a secret/service-role key.</b></div><div class="tip">The private demo stays available. No spreadsheet needed.</div>`)}
+function profileModal(){if(state.mode==='cloud'&&state.roomId){setModal(`<h2>Member identity</h2><p>Your actions are recorded against your permanent member ID for this browser session.</p><label class="field-label">Display name</label><input class="field" readonly value="${esc(currentName())}"><label class="field-label">Role</label><input class="field" readonly value="${esc(state.data.viewer.role)}"><div class="tip">If you clear site data, you may lose access. An admin will need to create a new invitation for your new browser session.</div><div class="modal-actions"><button class="btn primary" data-action="close-modal">Done</button></div>`);return;}setModal(`<h2>Your display name</h2><p>Used for changes in your private demo.</p><form id="profile-form"><label class="field-label">Name</label><input class="field" name="name" value="${esc(state.name)}" maxlength="40" required>${modalActions('Save name')}</form>`)}
+function newItemModal(){setModal(`<h2>Add an item type</h2><p>Create an item in the catalog. ${isAdmin()?'You can add a picture now or later.':'Only admins can upload pictures.'}</p><form id="item-form"><label class="field-label">Item name</label><input class="field" name="name" maxlength="100" required placeholder="Item name"><label class="field-label">Category</label><input class="field" name="category" maxlength="50" placeholder="e.g. Supplies" value="Other"><label class="field-label">Details (optional)</label><input class="field" name="detail" maxlength="100" placeholder="e.g. Model / type">${isAdmin()?`<label class="field-label">Item picture (optional)</label><input class="file-input" type="file" id="item-image-file" name="image" accept="image/jpeg,image/png,image/webp"><div class="upload-preview" id="image-preview">No image selected</div>`:''}${modalActions('Create item')}</form>`)}
+function imageModal(itemId){
+ if(!isAdmin()){toast('Only admins can change item images',true);return;}
+ const item=state.data.items.find(x=>x.id===itemId);if(!item)return;
+ state.modal={kind:'photo',itemId};const url=imageUrl(item);
+ setModal(`<h2>Item picture</h2><p><b>${esc(item.name)}</b> · Add a photo to help everyone recognize the item.</p><form id="photo-form"><label class="field-label">Upload JPG, PNG or WebP</label><input class="file-input" type="file" id="item-image-file" name="image" accept="image/jpeg,image/png,image/webp" required><div class="upload-preview" id="image-preview">${url?`<img src="${esc(url)}" alt="Current image">`:'No photo yet'}</div><div class="tip">Pictures are resized automatically to save storage space. Uploads are recorded in the activity log.</div>${modalActions(url?'Replace photo':'Add photo')}</form>${url?'<div class="modal-actions"><button class="btn danger" type="button" data-action="remove-image">Remove current photo</button></div>':''}`);
+}
+
+function newStorageModal(){setModal(`<h2>Add a storage location</h2><p>For example: Warehouse, Locker A, Cabinet 4.</p><form id="storage-form"><label class="field-label">Storage name</label><input class="field" name="name" maxlength="80" placeholder="Storage name" required>${modalActions('Create storage')}</form>`)}
+function shareModal(){
+ if(!isAdmin()){toast('Only admins can manage members',true);return;}
+ const d=state.data;
+ const rows=(d.members||[]).map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff17"><div><b>${esc(m.name)}</b> <span style="color:#ac9cc6;font-size:11px">${esc(m.role)}${m.active?'':' · revoked'}</span></div>${m.active&&m.user_id!==d.viewer.user_id?`<div class="flex"><button class="btn tiny" data-action="change-role" data-user="${esc(m.user_id)}" data-role="${m.role==='admin'?'member':'admin'}">${m.role==='admin'?'Demote':'Make admin'}</button><button class="btn tiny danger" data-action="revoke-member" data-user="${esc(m.user_id)}">Revoke</button></div>`:''}</div>`).join('');
+ const invites=(d.invites||[]).map(inv=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:7px 0"><span style="font-size:12px">Unused ${esc(inv.role)} invite · expires ${esc(dateText(inv.expires_at))}</span><button class="btn tiny danger" data-action="cancel-invite" data-invite="${esc(inv.id)}">Cancel</button></div>`).join('');
+ setModal(`<h2>Members & invitations</h2><p>Only admins can invite, remove or promote members. Each invitation is usable once and expires after 14 days.</p><form id="invite-form"><label class="field-label">Invite as</label><select class="field" name="role"><option value="member">Member</option><option value="admin">Admin</option></select>${modalActions('Create one-time invite')}</form><div style="margin-top:18px"><b style="font-size:13px">Members</b>${rows||'<div class="help">No members yet</div>'}</div>${invites?`<div style="margin-top:20px"><b style="font-size:13px">Unused invitations</b>${invites}</div>`:''}<div class="setup-card" style="margin-top:20px"><b>Publish with GitHub Pages</b><br>Download a connected <b>index.html</b> and upload it to your GitHub Pages repository.<br><br><button class="btn soft full" data-action="publish-file" type="button">↓ Download ready-to-publish website</button></div><div class="modal-actions"><button class="btn" data-action="leave-room">Leave this group view</button><button class="btn primary" data-action="close-modal">Done</button></div>`);
+}
+function showInvite(code,role,expiry){setModal(`<h2>One-time invitation ready</h2><p>Send this private code to your ${esc(role)}. It can be redeemed once before ${esc(dateText(expiry))}.</p><label class="field-label">Invitation code</label><input class="field" id="invite-code" readonly value="${esc(code)}"><div class="modal-actions"><button class="btn" data-action="copy-code">Copy code</button><button class="btn primary" data-action="share">Back to members</button></div><div class="tip">The code will not be displayed again after closing. Copy it now. Don't post it publicly.</div>`)}
+async function rpc(name, args){const {data,error}=await state.client.rpc('rfm_'+name,args);if(error)throw new Error(error.message||'Request failed');return data}
+async function connectCloud(url,key){if(!window.supabase)throw Error('Cloud library unavailable. Check internet access.');if(!/^https:\/\/[\w.-]+\.supabase\.co\/?$/.test(url.trim()))throw Error('Enter a valid Supabase project URL');if(key.includes('service_role')||key.startsWith('sb_secret_'))throw Error('Do not use a secret key. Use the publishable / anon key.');
+ const client=window.supabase.createClient(url.trim().replace(/\/$/,''),key.trim(),{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+ let {data:{session},error}=await client.auth.getSession();if(error)throw error;if(!session){const res=await client.auth.signInAnonymously();if(res.error)throw new Error(res.error.message+' — enable Anonymous Sign-ins in Supabase Authentication.');}
+ state.client=client;state.mode='cloud';state.roomId=localStorage.getItem('rfm_room_id')||null;
+ if(state.roomId){try{await refreshCloud();}catch(e){state.roomId=null;localStorage.removeItem('rfm_room_id');toast('Your group access was removed or cannot be verified. Ask an admin for a fresh invitation.',true)}}
+ if(!state.roomId)render();window.clearInterval(window._syncInterval);window._syncInterval=setInterval(()=>{if(state.mode==='cloud'&&state.roomId&&!state.busy)refreshCloud(true).catch(()=>{})},5000);
+}
+async function refreshCloud(silent=false){if(!state.roomId)return;try{let data=await rpc('get_snapshot',{p_room:state.roomId});state.data=data;state.name=data.viewer?.name||state.name;if(!isAdmin()&&state.tab==='activity')state.tab='storages';state.lastSync=Date.now();if(!silent||!document.activeElement||!['item-search','log-search'].includes(document.activeElement.id)){render()}}catch(e){if(/membership is inactive|do not have access/i.test(e.message)){state.roomId=null;localStorage.removeItem('rfm_room_id');state.tab='storages';closeModal();render();toast('Your access to this group has been revoked.',true);return;}throw e;}}
+async function executeChange(action,item,from,to,qty){if(state.mode==='local')demoChange(action,item,from,to,qty);else await rpc('change_stock',{p_room:state.roomId,p_action:action,p_item:item,p_from:from||null,p_to:to||null,p_quantity:qty});if(state.mode==='cloud')await refreshCloud();else render()}
+function downloadWebsite(){
+ const url=localStorage.getItem('rfm_url')||CONFIG.SUPABASE_URL;
+ const key=localStorage.getItem('rfm_key')||CONFIG.SUPABASE_ANON_KEY;
+ if(!url||!key){toast('Connect a shared database first',true);return}
+ const clone=document.documentElement.cloneNode(true);
+ ['app','modal-root','toast-root'].forEach(id=>{const node=clone.querySelector('#'+id);if(node)node.innerHTML=''});
+ let html='<!doctype html>\n'+clone.outerHTML;
+ const pattern=/const CONFIG = \{ SUPABASE_URL: '[^']*', SUPABASE_ANON_KEY: '[^']*' \};/;
+ if(!pattern.test(html)){toast('Unable to package website',true);return}
+ html=html.replace(pattern,`const CONFIG = { SUPABASE_URL: ${JSON.stringify(url)}, SUPABASE_ANON_KEY: ${JSON.stringify(key)} };`);
+ download(html,'index.html','text/html');toast('Ready-to-publish index.html downloaded');
+}
+function getExport(){const d={...state.data};if(!isAdmin()){delete d.logs;delete d.members;delete d.invites;}return JSON.stringify({...d,exported_at:new Date().toISOString()},null,2)}
+function download(content,name,mime){const b=new Blob([content],{type:mime});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+const csv=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+async function exportLog(){if(!isAdmin())throw Error('Admin permission required');let logs=state.data.logs;
+ if(state.mode==='cloud'){logs=[];let page=0;while(true){let batch=await rpc('get_activity',{p_room:state.roomId,p_limit:1000,p_offset:page*1000});logs.push(...batch);page++;if(batch.length<1000)break;if(page>50)throw Error('Too many history rows; ask to export an archive')} }
+ const cols=['created_at','actor_name','action','item_name','quantity','from_name','to_name','detail'];download([cols.map(csv).join(','),...logs.map(x=>cols.map(k=>csv(x[k])).join(','))].join('\r\n'),'RFM-activity-'+new Date().toISOString().slice(0,10)+'.csv','text/csv');toast('Activity CSV downloaded')}
+function bind(){
+ document.addEventListener('click',async e=>{
+ const el=e.target.closest('[data-action]');if(!el)return;const a=el.dataset.action;
+ try{
+ if(a==='close-modal'){closeModal();return}
+ if(a==='close-modal-overlay'){if(e.target===el)closeModal();return}
+ if(a==='configure'){setupModal();return}
+ if(a==='profile'){profileModal();return}
+ if(a==='new-item'){newItemModal();return}
+ if(a==='edit-image'){if(!isAdmin())throw Error('Only admins can change images');imageModal(el.dataset.item);return}
+ if(a==='remove-image'){if(!isAdmin())throw Error('Admin only');if(!state.modal?.itemId)return;const id=state.modal.itemId;await saveImage(id,null);closeModal();toast('Photo removed and logged');return}
+ if(a==='new-storage'){newStorageModal();return}
+ if(a==='share'){shareModal();return}
+ if(a==='revoke-member'){if(!isAdmin())throw Error('Admin only');const m=state.data.members.find(x=>x.user_id===el.dataset.user);if(!m)return;if(!confirm('Revoke '+m.name+' access? This immediately prevents future inventory changes.'))return;await rpc('revoke_member',{p_room:state.roomId,p_user:m.user_id});await refreshCloud();shareModal();toast('Member access revoked');return}
+ if(a==='change-role'){if(!isAdmin())throw Error('Admin only');const m=state.data.members.find(x=>x.user_id===el.dataset.user);if(!m)return;if(!confirm('Change '+m.name+' to '+el.dataset.role+'?'))return;await rpc('set_member_role',{p_room:state.roomId,p_user:m.user_id,p_role:el.dataset.role});await refreshCloud();shareModal();toast('Role updated');return}
+ if(a==='cancel-invite'){if(!isAdmin())throw Error('Admin only');if(!confirm('Cancel this unused invitation?'))return;await rpc('cancel_invite',{p_room:state.roomId,p_invite:el.dataset.invite});await refreshCloud();shareModal();toast('Invitation canceled');return}
+ if(a==='publish-file'){downloadWebsite();return}
+ if(a==='copy-code'){const input=$('#invite-code');if(!input)throw Error('No invitation code shown');await navigator.clipboard.writeText(input.value);toast('Personal invitation code copied');return}
+ if(a==='filter'){state.filter=el.dataset.filter;render();return}
+ if(a==='tab'){if(el.dataset.tab==='activity'&&!isAdmin())throw Error('Admin only');state.tab=el.dataset.tab;render();return}
+ if(a==='add-catalog'){quantityModal({action:'add',itemId:el.dataset.item});return}
+ if(a==='add-to-storage'){chooseItemModal(el.dataset.storageId);return}
+ if(a==='choose-item'){let to=state.modal?.storageId;quantityModal({action:'add',itemId:el.dataset.item,toId:to});return}
+ if(a==='add-one'){quantityModal({action:'add',itemId:el.dataset.item,toId:el.dataset.storageId});return}
+ if(a==='remove-one'){quantityModal({action:'remove',itemId:el.dataset.item,fromId:el.dataset.storageId});return}
+ if(a==='move-one'){quantityModal({action:'move',itemId:el.dataset.item,fromId:el.dataset.storageId});return}
+ if(a==='export'){download(getExport(),'RFM-inventory-backup-'+new Date().toISOString().slice(0,10)+'.json','application/json');toast('Backup downloaded');return}
+ if(a==='export-log'){if(!isAdmin())throw Error('Admin only');await exportLog();return}
+ if(a==='load-older'){if(!isAdmin())throw Error('Admin only');const batch=await rpc('get_activity',{p_room:state.roomId,p_limit:150,p_offset:state.data.logs.length});if(batch.length===0)toast('No older changes');else {state.data.logs.push(...batch);render()}return}
+ if(a==='leave-room'){state.roomId=null;localStorage.removeItem('rfm_room_id');closeModal();render();return}
+ if(a==='use-demo'){state.mode='local';state.roomId=null;state.data=JSON.parse(localStorage.getItem('rfm_local')||'null')||seedData();render();return}
+ }catch(err){toast(err.message||'Something went wrong',true)}
+ });
+ document.addEventListener('change',e=>{
+  if(e.target.id==='item-image-file'){
+    const file=e.target.files?.[0];
+    if(!file)return;
+    if(window._rfmPreviewURL)URL.revokeObjectURL(window._rfmPreviewURL);
+    window._rfmPreviewURL=URL.createObjectURL(file);
+    previewImage(window._rfmPreviewURL);
+  }
+ });
+ document.addEventListener('input',e=>{if(e.target.id==='item-search'){state.search=e.target.value;const list=$('#catalog-items');if(list)list.innerHTML=renderCatalog()}if(e.target.id==='log-search'){const val=e.target.value;state.logSearch=val;const sel=e.target.selectionStart;render();let inp=$('#log-search');if(inp){inp.focus();inp.setSelectionRange(sel,sel)}}});
+ document.addEventListener('submit',async e=>{if(!['quantity-form','item-form','photo-form','storage-form','connect-form','profile-form','create-room-form','join-room-form','invite-form'].includes(e.target.id))return;e.preventDefault();const f=e.target,v=new FormData(f);if(state.busy)return;state.busy=true;f.querySelector('button[type=submit]')?.setAttribute('disabled','');
+ try{
+ if(f.id==='invite-form'){if(!isAdmin())throw Error('Admin only');const inv=await rpc('create_invite',{p_room:state.roomId,p_role:v.get('role')||'member'});await refreshCloud();showInvite(inv.code,inv.role,inv.expires_at);toast('One-time invitation created');return;}
+ if(f.id==='quantity-form'){const m=state.modal,qty=Number(v.get('qty'));await executeChange(m.action,m.itemId,m.fromId,v.get('to')||m.toId||'',qty);closeModal();toast(m.action==='move'?'Item moved and logged':'Inventory updated and logged');}
+ if(f.id==='item-form'){
+  const name=v.get('name').trim(),category=v.get('category').trim()||'Other',detail=v.get('detail').trim();
+  const photo=v.get('image');let id;
+  if(state.mode==='local'){id=uid();state.data.items.push({id,name,category,detail});logEntry('item_created',name,'','',0,detail);localSave();}
+  else{id=await rpc('add_item',{p_room:state.roomId,p_name:name,p_category:category,p_detail:detail});await refreshCloud();}
+  if(photo instanceof File && photo.size){if(!isAdmin())throw Error('Only admins can add pictures');try{await saveImage(id,photo)}catch(err){toast('Item created, but photo failed: '+err.message,true);closeModal();render();return;}}
+  closeModal();render();toast('Item created'+(photo?.size?' with picture':''));
+ }
+ if(f.id==='photo-form'){
+  if(!isAdmin())throw Error('Only admins can change pictures');
+  const photo=v.get('image');if(!(photo instanceof File) || !photo.size)throw Error('Choose an image first');
+  await saveImage(state.modal.itemId,photo);closeModal();toast('Item photo saved and logged');
+ }
+ if(f.id==='storage-form'){const name=v.get('name').trim();if(state.mode==='local'){state.data.storages.push({id:uid(),name});logEntry('storage_created','','',name);localSave();render()}else{await rpc('add_storage',{p_room:state.roomId,p_name:name});await refreshCloud()}closeModal();toast('Storage created');}
+ if(f.id==='profile-form'){state.name=v.get('name').trim();localStorage.setItem('rfm_name',state.name);closeModal();render();toast('Name saved');}
+ if(f.id==='connect-form'){const url=v.get('url').trim(),key=v.get('key').trim();await connectCloud(url,key);localStorage.setItem('rfm_url',url);localStorage.setItem('rfm_key',key);closeModal();render();toast('Connected! Create or join a group.');}
+ if(f.id==='create-room-form'){state.name=v.get('display_name').trim();localStorage.setItem('rfm_name',state.name);const room=await rpc('create_room',{p_name:v.get('group_name'),p_display_name:state.name,p_sample:v.has('seed')});state.roomId=room.id;localStorage.setItem('rfm_room_id',room.id);await refreshCloud();toast('Group created! You are the admin. Create a one-time invite to add someone.');shareModal();}
+ if(f.id==='join-room-form'){state.name=v.get('display_name').trim();localStorage.setItem('rfm_name',state.name);const room=await rpc('join_room',{p_code:v.get('code'),p_display_name:state.name});state.roomId=room.id;localStorage.setItem('rfm_room_id',room.id);await refreshCloud();toast('Joined group with your own member identity!');}
+ }catch(err){toast(err.message||'Unable to save',true);f.querySelector('button[type=submit]')?.removeAttribute('disabled')}finally{state.busy=false}
+ });
+ document.addEventListener('dragstart',e=>{const elem=e.target.closest('[data-drag-item]');if(!elem)return;state.drag={itemId:elem.dataset.dragItem,fromId:elem.dataset.dragFrom||''};e.dataTransfer.effectAllowed=state.drag.fromId?'move':'copy';e.dataTransfer.setData('text/plain',state.drag.itemId)});
+ document.addEventListener('dragover',e=>{const storage=e.target.closest('[data-storage]');const catalog=e.target.closest('.catalog');if(storage&&state.drag){e.preventDefault();e.dataTransfer.dropEffect=state.drag.fromId?'move':'copy';storage.classList.add('dragover')}else if(catalog&&state.drag?.fromId){e.preventDefault();e.dataTransfer.dropEffect='move';catalog.classList.add('dragover')}});
+ document.addEventListener('dragleave',e=>{const storage=e.target.closest('[data-storage]');const catalog=e.target.closest('.catalog');if(storage && !storage.contains(e.relatedTarget))storage.classList.remove('dragover');if(catalog && !catalog.contains(e.relatedTarget))catalog.classList.remove('dragover')});
+ document.addEventListener('drop',e=>{const storage=e.target.closest('[data-storage]');const catalog=e.target.closest('.catalog');document.querySelectorAll('.dragover').forEach(x=>x.classList.remove('dragover'));if(!state.drag)return;const d=state.drag;state.drag=null;if(catalog && d.fromId){e.preventDefault();quantityModal({action:'remove',itemId:d.itemId,fromId:d.fromId});return}if(!storage)return;e.preventDefault();if(d.fromId===storage.dataset.storage){toast('That item is already in this storage');return}quantityModal({action:d.fromId?'move':'add',itemId:d.itemId,fromId:d.fromId,toId:storage.dataset.storage})});
+ document.addEventListener('dragend',()=>{state.drag=null;document.querySelectorAll('.dragover').forEach(x=>x.classList.remove('dragover'))});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+}
+async function boot(){try{state.data=JSON.parse(localStorage.getItem('rfm_local')||'null')||seedData()}catch{state.data=seedData()}localSave();bind();render();let url=localStorage.getItem('rfm_url')||CONFIG.SUPABASE_URL,key=localStorage.getItem('rfm_key')||CONFIG.SUPABASE_ANON_KEY;if(url&&key){try{await connectCloud(url,key)}catch(err){state.mode='local';state.roomId=null;state.client=null;toast('Shared connection failed: '+err.message,true);render()}}}
+boot();
+</script>
+</body></html>
