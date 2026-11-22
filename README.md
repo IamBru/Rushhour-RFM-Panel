@@ -1,5 +1,35 @@
 # Rushhour-RFM-Panel
 
+## Configured categories and panel logo
+
+Apply `supabase/migrations/202611220006_categories_and_logo.sql` once before
+deploying this frontend. Existing item categories populate the configured list.
+Admin Settings supports adding/renaming categories and deleting unused ones.
+Renaming cascades to item categories; deleting an in-use category is rejected.
+The database foreign key enforces the configured options for all item writes,
+including older clients. With no configured categories, add one in Settings first.
+
+Admin Settings also accepts a JPG/PNG/WebP logo, resized to at most 160px and
+stored as a bounded image data URL on the existing RFM room. All signed-in members
+see the logo; the unauthenticated Join screen retains the default mark. No file
+storage permissions are changed. Logo/category RPCs require an active admin and
+record changes in activity history. The profile dialog no longer shows Role;
+admins still manage roles through Settings.
+
+Migration 006 has not been applied by Codex. Frontend fixture tests cover category
+choices, rename/delete rules, member guards and logo rendering/removal; live SQL
+and visual desktop/mobile checks remain pending.
+
+## Short invitation codes
+
+Apply `supabase/migrations/202611220005_short_invite_codes.sql` in Supabase SQL
+Editor to issue 12-character uppercase hexadecimal invitation codes instead of
+32 characters. Existing invitations are unchanged and remain redeemable. Admin
+authorization, default member role, one-time redemption and 14-day expiry remain
+unchanged. The unique code constraint handles collisions with bounded retries;
+codes are never included in activity log details. No frontend deployment is needed.
+The migration has not been executed by Codex.
+
 ## Remove all and readable deletion history
 
 Apply `supabase/migrations/202611220004_removal_and_readable_audit.sql` once after

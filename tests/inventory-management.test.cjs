@@ -144,3 +144,27 @@ test('sync reloads older history instead of truncating it and does not resurrect
  f.ctx.fakeRpc=async()=>({viewer:{role:'admin'},logs:[]});f.run('rpc=fakeRpc');
  await f.run('refreshCloud(true)');assert.equal(f.run('state.data.logs.length'),0);
 });
+test('configured categories drive create/edit dropdowns and rename updates items',async()=>{
+ const f=fixture();await f.run("manageCategory('add','Health')");
+ f.run('newItemModal()');let markup=f.nodes['#modal-root'].innerHTML;
+ assert(markup.includes('<select class="field" name="category" required>'));assert(markup.includes('value="Health"'));
+ assert(!markup.includes('<input class="field" name="category"'));
+ await f.run("manageCategory('rename','Shotguns','Rifle')");
+ assert(f.run("state.data.items.filter(x=>x.category==='Rifle').length>0"));
+ await assert.rejects(f.run("manageCategory('delete','Rifle')"),/Reassign items/);
+ await f.run("manageCategory('delete','Health')");assert(!f.run('categoryNames()').includes('Health'));
+ f.run("editEntityModal('item','item-0')");assert(f.nodes['#modal-root'].innerHTML.includes('value="Rifle" selected'));
+});
+test('member cannot manage categories or logo; profile has no role field',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';state.data.viewer={role:'member',name:'Member'}");
+ await assert.rejects(f.run("manageCategory('add','Rifle')"),/Only admins/);
+ await assert.rejects(f.run('saveLogo({get:()=>null})'),/Only admins/);
+ f.run('profileModal()');assert(!f.nodes['#modal-root'].innerHTML.includes('>Role</label>'));
+});
+test('logo renders from room data and removing it restores the text mark',async()=>{
+ const f=fixture();f.run("state.data.room.logo_data='data:image/png;base64,AAAA'");
+ assert(f.run('renderHeader(true)').includes('alt="RFM logo"'));
+ await f.run("saveLogo({get:k=>k==='remove_image'?'on':null})");
+ assert(!f.run('renderHeader(true)').includes('alt="RFM logo"'));
+ assert.equal(f.run('state.data.room.logo_data'),null);
+});
