@@ -1,5 +1,6 @@
 <!doctype html>
-<html lang="en"><head>
+<html lang="en">
+<head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0d0a19">
@@ -45,7 +46,7 @@
 <script>
 // To publish a shared app, put your Supabase URL and *publishable/anon* key here.
 // Never use a Supabase service_role or secret API key in this page.
-const CONFIG = { SUPABASE_URL: "https://txkdglpakojrotnmsaos.supabase.co/", SUPABASE_ANON_KEY: "sb_publishable_hx9d4Nd-tOFGusFEv4md7w_xQxNlb7e" };
+const CONFIG = { SUPABASE_URL: '', SUPABASE_ANON_KEY: '' };
 const $ = s => document.querySelector(s);
 const esc = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'id-'+Math.random().toString(36).slice(2)+Date.now();
@@ -147,13 +148,13 @@ function render(){
  </div>
  <div class="dashboard">
    <aside class="panel catalog">
-     <div class="panel-head"><div class="flex" style="justify-content:space-between"><div class="title">All items</div><button class="btn icon" data-action="new-item" title="Add new item">+</button></div>
-       <div class="help">Drag into a storage to add · drag back here to remove.</div>
+     <div class="panel-head"><div class="flex" style="justify-content:space-between"><div class="title">Master item catalog</div>${isAdmin()?'<button class="btn icon" data-action="new-item" title="Add item type (admins only)">+</button>':''}</div>
+       <div class="help">Available item types, separate from storage. Drag an item into a storage to add it; drag it back here to remove it from that storage.</div>
        <input class="search" id="item-search" placeholder="Search items..." value="${esc(state.search)}" aria-label="Search items" style="margin-top:15px">
        <div class="filters">${['All',...new Set(d.items.map(x=>x.category))].map(c=>`<button class="chip ${state.filter===c?'active':''}" data-action="filter" data-filter="${esc(c)}">${esc(c)}</button>`).join('')}</div>
      </div>
      <div class="catalog-items" id="catalog-items">${renderCatalog()}</div>
-     <div class="catalog-foot"><button class="btn soft full" data-action="new-item">+ Add item type</button></div>
+     ${isAdmin()?'<div class="catalog-foot"><button class="btn soft full" data-action="new-item">+ Add catalog item</button></div>':''}
    </aside>
    <section>
      <div class="board-head"><div class="board-title"><div class="tabs"><button class="tab ${state.tab==='storages'?'active':''}" data-action="tab" data-tab="storages">Storage board</button>${isAdmin()?`<button class="tab ${state.tab==='activity'?'active':''}" data-action="tab" data-tab="activity">Activity log</button>`:''}</div></div>
@@ -167,7 +168,7 @@ function renderHeader(showActions){return `<header class="top"><div class="brand
  ${showActions?`<button class="btn ghost" data-action="profile">👤 ${esc(currentName())}</button><button class="btn ghost" data-action="export">↓ Backup</button>${state.mode==='cloud'?(isAdmin()?'<button class="btn ghost" data-action="share">⚙ Members & invites</button>':''):'<button class="btn ghost" data-action="configure">⚙ Sharing</button>'}`:'<button class="btn ghost" data-action="configure">⚙ Settings</button>'}</div></header>`}
 function renderFooter(){return `<footer>RFM Storage Board · Item pictures · Drag-and-drop inventory · Every change is logged ${state.mode==='cloud'?'in your group database':'in this browser'}.</footer>`}
 function renderCatalog(){let items=state.data.items.filter(x=>(state.filter==='All'||x.category===state.filter)&&(x.name+' '+x.category+' '+x.detail).toLowerCase().includes(state.search.toLowerCase()));
-return items.length?items.map(x=>`<div class="item" draggable="true" data-drag-item="${esc(x.id)}" title="Drag into a storage location">${itemThumb(x)}<div class="item-main"><div class="item-name">${esc(x.name)}</div><div class="item-detail">${esc(x.detail||x.category)}</div></div><span class="qty">${total(x.id)}</span>${isAdmin()?`<button class="photo-button" data-action="edit-image" data-item="${esc(x.id)}" title="${imageUrl(x)?'Change':'Add'} item photo" aria-label="Edit ${esc(x.name)} photo">📷</button>`:''}<button class="btn tiny" data-action="add-catalog" data-item="${esc(x.id)}" title="Add to storage">+</button></div>`).join(''):'<div class="empty">No items match your search.</div>'}
+return items.length?items.map(x=>`<div class="item" draggable="true" data-drag-item="${esc(x.id)}" title="Drag into a storage location">${itemThumb(x)}<div class="item-main"><div class="item-name">${esc(x.name)}</div><div class="item-detail">${esc(x.detail||x.category)}</div></div>${isAdmin()?`<button class="photo-button" data-action="edit-image" data-item="${esc(x.id)}" title="${imageUrl(x)?'Change':'Add'} item photo" aria-label="Edit ${esc(x.name)} photo">📷</button>`:''}<button class="btn tiny" data-action="add-catalog" data-item="${esc(x.id)}" title="Add to storage">+</button></div>`).join(''):'<div class="empty">No catalog items match. Admins can create new item types.</div>'}
 function renderStorage(storage){const rows=state.data.stock.filter(x=>x.storage_id===storage.id&&x.quantity>0).map(x=>({stock:x,item:state.data.items.find(i=>i.id===x.item_id)})).filter(x=>x.item).sort((a,b)=>a.item.name.localeCompare(b.item.name));const n=rows.reduce((s,x)=>s+x.stock.quantity,0);
 return `<section class="storage" data-storage="${esc(storage.id)}"><div class="storage-header"><div class="flex"><div class="storage-icon">▣</div><div><div class="storage-name">${esc(storage.name)}</div><div class="storage-meta">${n} units · ${rows.length} item types</div></div></div><button class="btn icon" data-action="add-to-storage" data-storage-id="${esc(storage.id)}" title="Add item">+</button></div>
 <div class="storage-list">${rows.length?rows.map(({stock,item})=>`<div class="stock-row" draggable="true" data-drag-item="${esc(item.id)}" data-drag-from="${esc(storage.id)}">${itemThumb(item,true)}<div class="stock-name" title="${esc(item.name)}">${esc(item.name)}</div><span class="stock-qty">${stock.quantity}</span><div class="stock-buttons"><button data-action="move-one" data-item="${esc(item.id)}" data-storage-id="${esc(storage.id)}" title="Move to another storage">↗</button><button data-action="add-one" data-item="${esc(item.id)}" data-storage-id="${esc(storage.id)}" title="Add quantity">+</button><button data-action="remove-one" data-item="${esc(item.id)}" data-storage-id="${esc(storage.id)}" title="Remove from inventory">−</button></div></div>`).join(''):`<div class="empty"><div class="empty-icon">↓</div>Drop an item here<br>or tap + to add</div>`}</div></section>`}
@@ -182,11 +183,11 @@ function quantityModal({action,itemId,fromId='',toId=''}){const d=state.data,ite
  state.modal={kind:'quantity',action,itemId,fromId,toId};setModal(`<h2>${label}</h2><p><b>${esc(item.name)}</b> ${fromId?`· ${max} available in ${esc(d.storages.find(x=>x.id===fromId)?.name)}`:'· Choose where to store it'}</p><form id="quantity-form">
  ${action!=='remove'?`<label class="field-label">${action==='move'?'Move to':'Storage location'}</label><select class="field" name="to" required>${options}</select>`:''}
  <label class="field-label">Quantity</label><input class="field" name="qty" type="number" min="1" max="${max}" value="1" required>${modalActions(action==='add'?'Add items':action==='move'?'Move items':'Remove items')}</form>`)}
-function chooseItemModal(storageId){state.modal={kind:'choose',storageId};setModal(`<h2>Add item to ${esc(state.data.storages.find(x=>x.id===storageId)?.name)}</h2><p>Choose an item, then enter how many to add.</p><div style="max-height:340px;overflow:auto">${state.data.items.map(x=>`<button class="btn full" style="text-align:left;margin:4px 0" data-action="choose-item" data-item="${esc(x.id)}">${esc(x.name)} <span style="float:right;color:#b9a5d5">${esc(x.detail)}</span></button>`).join('')}</div><div class="modal-actions"><button class="btn" data-action="close-modal">Cancel</button><button class="btn soft" data-action="new-item">+ Create item</button></div>`)}
+function chooseItemModal(storageId){state.modal={kind:'choose',storageId};setModal(`<h2>Add item to ${esc(state.data.storages.find(x=>x.id===storageId)?.name)}</h2><p>Choose an item, then enter how many to add.</p><div style="max-height:340px;overflow:auto">${state.data.items.map(x=>`<button class="btn full" style="text-align:left;margin:4px 0" data-action="choose-item" data-item="${esc(x.id)}">${esc(x.name)} <span style="float:right;color:#b9a5d5">${esc(x.detail)}</span></button>`).join('')}</div><div class="modal-actions"><button class="btn" data-action="close-modal">Cancel</button>${isAdmin()?'<button class="btn soft" data-action="new-item">+ New catalog item</button>':''}</div>`)}
 function setupModal(){let url=localStorage.getItem('rfm_url')||CONFIG.SUPABASE_URL,key=localStorage.getItem('rfm_key')||CONFIG.SUPABASE_ANON_KEY;
  setModal(`<h2>Connect a shared group</h2><p>One-time setup for the person hosting the inventory. You can try everything without this, but sharing requires a free database.</p><form id="connect-form"><label class="field-label">Supabase project URL</label><input class="field" name="url" value="${esc(url)}" placeholder="https://xxxx.supabase.co" required><label class="field-label">Supabase publishable / anon key</label><input class="field" name="key" value="${esc(key)}" placeholder="sb_publishable_... or eyJ..." required>${modalActions('Connect')}</form><div class="setup-card"><b>Setup:</b> Create a free project at <a href="https://supabase.com" target="_blank" rel="noopener noreferrer">Supabase</a>, enable <b>Anonymous Sign-ins</b> in Authentication → Providers, run <b>supabase_setup_admin.sql</b> in SQL Editor, and paste the Project URL and publishable key here.<br><br>To share one link without each person setting it up, put these two public values in <b>CONFIG</b> at the beginning of this HTML file and host it as a static website. <b>Never paste a secret/service-role key.</b></div><div class="tip">The private demo stays available. No spreadsheet needed.</div>`)}
 function profileModal(){if(state.mode==='cloud'&&state.roomId){setModal(`<h2>Member identity</h2><p>Your actions are recorded against your permanent member ID for this browser session.</p><label class="field-label">Display name</label><input class="field" readonly value="${esc(currentName())}"><label class="field-label">Role</label><input class="field" readonly value="${esc(state.data.viewer.role)}"><div class="tip">If you clear site data, you may lose access. An admin will need to create a new invitation for your new browser session.</div><div class="modal-actions"><button class="btn primary" data-action="close-modal">Done</button></div>`);return;}setModal(`<h2>Your display name</h2><p>Used for changes in your private demo.</p><form id="profile-form"><label class="field-label">Name</label><input class="field" name="name" value="${esc(state.name)}" maxlength="40" required>${modalActions('Save name')}</form>`)}
-function newItemModal(){setModal(`<h2>Add an item type</h2><p>Create an item in the catalog. ${isAdmin()?'You can add a picture now or later.':'Only admins can upload pictures.'}</p><form id="item-form"><label class="field-label">Item name</label><input class="field" name="name" maxlength="100" required placeholder="Item name"><label class="field-label">Category</label><input class="field" name="category" maxlength="50" placeholder="e.g. Supplies" value="Other"><label class="field-label">Details (optional)</label><input class="field" name="detail" maxlength="100" placeholder="e.g. Model / type">${isAdmin()?`<label class="field-label">Item picture (optional)</label><input class="file-input" type="file" id="item-image-file" name="image" accept="image/jpeg,image/png,image/webp"><div class="upload-preview" id="image-preview">No image selected</div>`:''}${modalActions('Create item')}</form>`)}
+function newItemModal(){if(!isAdmin()){toast('Only admins can create catalog items',true);return;}setModal(`<h2>Add to master catalog</h2><p>Create an available item type for the entire group. This does <b>not</b> add any quantity to storage. Members can then select or drag it into a storage.</p><form id="item-form"><label class="field-label">Item name</label><input class="field" name="name" maxlength="100" required placeholder="Item name"><label class="field-label">Category</label><input class="field" name="category" maxlength="50" placeholder="e.g. Supplies" value="Other"><label class="field-label">Details (optional)</label><input class="field" name="detail" maxlength="100" placeholder="e.g. Model / type">${isAdmin()?`<label class="field-label">Item picture (optional)</label><input class="file-input" type="file" id="item-image-file" name="image" accept="image/jpeg,image/png,image/webp"><div class="upload-preview" id="image-preview">No image selected</div>`:''}${modalActions('Create item')}</form>`)}
 function imageModal(itemId){
  if(!isAdmin()){toast('Only admins can change item images',true);return;}
  const item=state.data.items.find(x=>x.id===itemId);if(!item)return;
@@ -239,7 +240,7 @@ function bind(){
  if(a==='close-modal-overlay'){if(e.target===el)closeModal();return}
  if(a==='configure'){setupModal();return}
  if(a==='profile'){profileModal();return}
- if(a==='new-item'){newItemModal();return}
+ if(a==='new-item'){if(!isAdmin())throw Error('Only admins can create catalog items');newItemModal();return}
  if(a==='edit-image'){if(!isAdmin())throw Error('Only admins can change images');imageModal(el.dataset.item);return}
  if(a==='remove-image'){if(!isAdmin())throw Error('Admin only');if(!state.modal?.itemId)return;const id=state.modal.itemId;await saveImage(id,null);closeModal();toast('Photo removed and logged');return}
  if(a==='new-storage'){newStorageModal();return}
@@ -279,12 +280,13 @@ function bind(){
  if(f.id==='invite-form'){if(!isAdmin())throw Error('Admin only');const inv=await rpc('create_invite',{p_room:state.roomId,p_role:v.get('role')||'member'});await refreshCloud();showInvite(inv.code,inv.role,inv.expires_at);toast('One-time invitation created');return;}
  if(f.id==='quantity-form'){const m=state.modal,qty=Number(v.get('qty'));await executeChange(m.action,m.itemId,m.fromId,v.get('to')||m.toId||'',qty);closeModal();toast(m.action==='move'?'Item moved and logged':'Inventory updated and logged');}
  if(f.id==='item-form'){
+  if(!isAdmin())throw Error('Only admins can create catalog items');
   const name=v.get('name').trim(),category=v.get('category').trim()||'Other',detail=v.get('detail').trim();
   const photo=v.get('image');let id;
   if(state.mode==='local'){id=uid();state.data.items.push({id,name,category,detail});logEntry('item_created',name,'','',0,detail);localSave();}
   else{id=await rpc('add_item',{p_room:state.roomId,p_name:name,p_category:category,p_detail:detail});await refreshCloud();}
   if(photo instanceof File && photo.size){if(!isAdmin())throw Error('Only admins can add pictures');try{await saveImage(id,photo)}catch(err){toast('Item created, but photo failed: '+err.message,true);closeModal();render();return;}}
-  closeModal();render();toast('Item created'+(photo?.size?' with picture':''));
+  closeModal();render();toast('Item added to master catalog'+(photo?.size?' with picture':'')+'. Nothing was added to storage.');
  }
  if(f.id==='photo-form'){
   if(!isAdmin())throw Error('Only admins can change pictures');
@@ -307,5 +309,4 @@ function bind(){
 }
 async function boot(){try{state.data=JSON.parse(localStorage.getItem('rfm_local')||'null')||seedData()}catch{state.data=seedData()}localSave();bind();render();let url=localStorage.getItem('rfm_url')||CONFIG.SUPABASE_URL,key=localStorage.getItem('rfm_key')||CONFIG.SUPABASE_ANON_KEY;if(url&&key){try{await connectCloud(url,key)}catch(err){state.mode='local';state.roomId=null;state.client=null;toast('Shared connection failed: '+err.message,true);render()}}}
 boot();
-</script>
-</body></html>
+</script></body></html>
