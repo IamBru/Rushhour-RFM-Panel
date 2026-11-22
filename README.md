@@ -213,3 +213,12 @@ positions. Catalog and activity rows use stable IDs to keep the visible row in
 place when rows are inserted above it. Already-loaded older logs are fetched again
 from the server rather than being discarded or merged from stale cached history.
 This frontend update needs no new SQL migration.
+
+
+### Rank editing (migration 010)
+
+Run `supabase/migrations/202611220010_rank_management.sql` in the existing Supabase project's SQL Editor after migrations 001-009, then deploy the updated frontend. This adds family-rank definitions, member assignments and a separate audit table; it does not change panel roles, existing memberships, stock or Storage history.
+
+In Ranks, admins use the settings icon beside a rank to edit its name and subtitle. Lieutenant and Soldier also support one silent promotion per line. Use **Assign rank** beside an active member to select a family rank and optional promotion; choose **Unassigned** to clear it. Reassign members before removing a promotion they use. Renaming a rank preserves assignments. All active members see the shared roster; revoked members are excluded. Concurrent rank edits require reopening a stale editor instead of overwriting newer changes.
+
+The migration enables RLS and revokes direct browser table access. Its read RPC requires active membership and its write RPCs require an active admin; assignment writes never update `rfm_members.role`. Changes retain actor attribution in `rfm_rank_activity`. Apply and verify these permissions on Supabase before relying on them in production; the local Node tests do not execute PostgreSQL policies.

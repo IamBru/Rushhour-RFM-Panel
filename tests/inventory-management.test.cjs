@@ -328,3 +328,39 @@ test('failed cloud storage move leaves local storage and stock untouched',async(
  f.run('rpc=failMove');await assert.rejects(f.run("moveStorageToGroup('storage-0','destination')"),/denied/);
  assert.equal(f.run('JSON.stringify(state.data)'),before);assert.equal(f.run('state.busy'),false);
 });
+
+
+async function ranksFixture(){const f=fixture();f.run("state.data.members=[{user_id:'one',name:'Test Member',active:true,role:'member'},{user_id:'revoked',name:'Old Member',active:false,role:'member'}]");await f.run('loadRanks()');return f}
+test('rank editor is admin-only; member view escapes names and excludes revoked members',async()=>{
+ const f=await ranksFixture();assert.match(f.run('renderRanks()'),/data-action="rank-edit"/);assert.match(f.run('renderRanks()'),/data-action="rank-assign"/);
+ f.run("state.rankBoard.members[0].name='<script>bad</script>';state.mode='cloud';state.data.viewer={role:'member'}");
+ const html=f.run('renderRanks()');assert.doesNotMatch(html,/data-action="rank-(edit|assign)"/);assert.doesNotMatch(html,/<script>/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/Old Member/);
+ assert.throws(()=>f.run("editRankModal('boss')"),/Only admins/);assert.throws(()=>f.run("assignRankModal('one')"),/Only admins/);
+ await assert.rejects(f.run('saveRank(new Map())'),/Only admins/);await assert.rejects(f.run('saveRankAssignment(new Map())'),/Only admins/);
+});
+test('rank edits and assignments preserve inventory and panel roles; in-use promotion removal is rejected',async()=>{
+ const f=await ranksFixture(),before=f.run('JSON.stringify({stock:state.data.stock,items:state.data.items,members:state.data.members,logs:state.data.logs})');
+ f.run("state.modal={user:'one'}");await f.run("saveRankAssignment(new Map([['rank','lieutenant'],['promotion','Coordinator']]))");
+ f.run("state.modal={key:'lieutenant',version:1}");
+ await assert.rejects(f.run("saveRank(new Map([['name','Lieutenant'],['subtitle',''],['promotions','Advisor']]))"),/Reassign/);
+ f.ctx.rankValues=new Map([['name','Senior Lieutenant'],['subtitle','Team lead'],['promotions','Coordinator\nAdvisor']]);await f.run('saveRank(rankValues)');
+ assert.equal(f.run("state.rankBoard.ranks.find(r=>r.key==='lieutenant').name"),'Senior Lieutenant');
+ assert.equal(f.run('state.rankBoard.members[0].rank_key'),'lieutenant');
+ assert.match(f.run('renderRanks()'),/Senior Lieutenant/);
+ assert.equal(f.run('JSON.stringify({stock:state.data.stock,items:state.data.items,members:state.data.members,logs:state.data.logs})'),before);
+ f.run("state.modal={user:'one'}");await f.run("saveRankAssignment(new Map([['rank',''],['promotion','']]))");assert.equal(f.run('state.data.family_assignments.length'),0);
+ assert.equal(f.run('state.data.rank_activity.length'),3);
+});
+test('assignment dropdown resets promotions and rejects invalid selections',async()=>{
+ const f=await ranksFixture();f.events.change({target:{id:'family-rank-select',value:'soldier'}});
+ assert.match(f.nodes['#family-promotion-select'].innerHTML,/Hustler/);assert.doesNotMatch(f.nodes['#family-promotion-select'].innerHTML,/Coordinator/);
+ f.run("state.modal={user:'one'}");await assert.rejects(f.run("saveRankAssignment(new Map([['rank','boss'],['promotion','Hustler']]))"),/valid/);
+ await assert.rejects(f.run("saveRankAssignment(new Map([['rank','bad'],['promotion','']]))"),/valid/);
+});
+test('cloud rank failure preserves drafts and data; stale local edits are rejected',async()=>{
+ const f=await ranksFixture();f.run("editRankModal('boss');state.mode='cloud';state.data.viewer={role:'admin'};state.roomId='room'");
+ const before=f.run('JSON.stringify(state.rankBoard)'),modal=f.nodes['#modal-root'].innerHTML;
+ f.ctx.failRank=async(name,args)=>{assert.equal(name,'edit_rank');assert.equal(args.p_version,1);throw Error('denied')};f.run('rpc=failRank');
+ await assert.rejects(f.run("saveRank(new Map([['name','New Boss']]))"),/denied/);assert.equal(f.run('JSON.stringify(state.rankBoard)'),before);assert.equal(f.nodes['#modal-root'].innerHTML,modal);
+ f.run("state.mode='local';state.rankBoard.ranks[0].version=2");await assert.rejects(f.run("saveRank(new Map([['name','New Boss']]))"),/changed/);
+});

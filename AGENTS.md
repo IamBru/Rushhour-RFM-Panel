@@ -96,3 +96,5 @@ Treat these as durable project requirements. Update `AGENTS.md` when a lasting, 
 - Automatic refreshes must preserve page, catalog, activity and modal scroll positions, including older activity already loaded.
 
 - Only admins may drag storage headers between storage groups. Moving a storage preserves its ID and all stock variants, requires backend admin authorization, and adds an attributed activity entry.
+
+- Ranks is a shared family hierarchy reference. Active members may view rank names, silent promotions and active-member assignments. Only admins may edit them via authorized RPCs. Family assignments never alter panel membership roles or stock. Keep rank audit records separate from Storage history and preserve stable rank keys when renaming labels.
