@@ -174,7 +174,7 @@ function render(){
 }
 function renderHeader(showActions){return `<header class="top"><div class="brand"><div class="mark">RFM</div><div><h1>RFM Panel</h1><div class="subtitle">${esc(state.data?.room?.name||'Simple shared inventory')}</div></div></div>
  <div class="top-actions"><span class="pill"><i class="dot ${state.mode==='local'?'local':''}"></i>${state.mode==='cloud'?'RFM connected · syncs every 5s':'Local demo'}</span>
- ${showActions?`<button class="btn ghost" data-action="profile">👤 ${esc(currentName())}</button>${isAdmin()?'<button class="btn ghost" data-action="export">↓ Backup</button>':''}${state.mode==='cloud'?(isAdmin()?'<button class="btn ghost" data-action="share">⚙ Members & invites</button>':''):'<button class="btn ghost" data-action="configure">⚙ Sharing</button>'}`:(location.hostname.endsWith('.github.io')?'':'<button class="btn ghost" data-action="configure">⚙ Settings</button>')}</div></header>`}
+ ${showActions?`<button class="btn ghost" data-action="profile">👤 ${esc(currentName())}</button>${isAdmin()?'<button class="btn ghost" data-action="export">↓ Backup</button>':''}${state.mode==='cloud'?(isAdmin()?'<button class="btn ghost" data-action="share">⚙ Settings</button>':''):'<button class="btn ghost" data-action="configure">⚙ Sharing</button>'}`:(location.hostname.endsWith('.github.io')?'':'<button class="btn ghost" data-action="configure">⚙ Settings</button>')}</div></header>`}
 function renderFooter(){return `<footer>RFM Storage Board · Item pictures · Drag-and-drop inventory · Every change is logged ${state.mode==='cloud'?'in the shared database':'in this browser'}.</footer>`}
 function renderCatalog(){let items=state.data.items.filter(x=>(state.filter==='All'||x.category===state.filter)&&(x.name+' '+x.category+' '+x.detail).toLowerCase().includes(state.search.toLowerCase()));
 return items.length?items.map(x=>`<div class="item" draggable="true" data-drag-item="${esc(x.id)}" title="Drag into a storage location">${itemThumb(x)}<div class="item-main"><div class="item-name">${esc(x.name)}</div><div class="item-detail">${esc(x.detail||x.category)}</div></div>${isAdmin()?`<button class="photo-button" data-action="edit-image" data-item="${esc(x.id)}" title="${imageUrl(x)?'Change':'Add'} item photo" aria-label="Edit ${esc(x.name)} photo">📷</button>`:''}<button class="btn tiny" data-action="add-catalog" data-item="${esc(x.id)}" title="Add to storage">+</button></div>`).join(''):'<div class="empty">No catalog items match. Admins can create new item types.</div>'}
@@ -210,13 +210,28 @@ function imageModal(itemId){
 
 function newStorageModal(){setModal(`<h2>Add a storage location</h2><p>For example: Warehouse, Locker A, Cabinet 4.</p><form id="storage-form"><label class="field-label">Storage name</label><input class="field" name="name" maxlength="80" placeholder="Storage name" required>${modalActions('Create storage')}</form>`)}
 function shareModal(){
- if(!isAdmin()){toast('Only admins can manage members',true);return;}
+ if(!isAdmin()){toast('Only admins can open settings',true);return;}
  const d=state.data;
  const rows=(d.members||[]).map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff17"><div><b>${esc(m.name)}</b> <span style="color:#ac9cc6;font-size:11px">${esc(m.role)}${m.active?'':' · revoked'}</span></div>${m.active&&m.user_id!==d.viewer.user_id?`<div class="flex"><button class="btn tiny" data-action="change-role" data-user="${esc(m.user_id)}" data-role="${m.role==='admin'?'member':'admin'}">${m.role==='admin'?'Demote':'Make admin'}</button><button class="btn tiny danger" data-action="revoke-member" data-user="${esc(m.user_id)}">Revoke</button></div>`:''}</div>`).join('');
  const invites=(d.invites||[]).map(inv=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:7px 0"><span style="font-size:12px">Unused ${esc(inv.role)} invite · expires ${esc(dateText(inv.expires_at))}</span><button class="btn tiny danger" data-action="cancel-invite" data-invite="${esc(inv.id)}">Cancel</button></div>`).join('');
- setModal(`<h2>Members & invitations</h2><p>Only admins can invite, remove or promote members. Each invitation is usable once and expires after 14 days.</p><form id="invite-form"><label class="field-label">Invite as</label><select class="field" name="role"><option value="member">Member</option><option value="admin">Admin</option></select>${modalActions('Create one-time invite')}</form><div style="margin-top:18px"><b style="font-size:13px">Members</b>${rows||'<div class="help">No members yet</div>'}</div>${invites?`<div style="margin-top:20px"><b style="font-size:13px">Unused invitations</b>${invites}</div>`:''}<div class="modal-actions"><button class="btn primary" data-action="close-modal">Done</button></div>`);
+ setModal(`<h2>Settings</h2><h3>Members & invitations</h3><p>Only admins can invite, remove or promote members. Each invitation is usable once and expires after 14 days.</p><form id="invite-form"><label class="field-label">Invite as</label><select class="field" name="role"><option value="member">Member</option><option value="admin">Admin</option></select>${modalActions('Create one-time invite')}</form><div style="margin-top:18px"><b style="font-size:13px">Members</b>${rows||'<div class="help">No members yet</div>'}</div>${invites?`<div style="margin-top:20px"><b style="font-size:13px">Unused invitations</b>${invites}</div>`:''}${state.mode==='cloud'?`<div class="setup-card" style="margin-top:20px"><b>Activity history</b><p>Permanently delete all activity logs for this RFM group. Inventory, catalog items and memberships stay unchanged. Export the activity log first if you want to keep a copy.</p><button class="btn danger full" data-action="clear-logs" type="button">Clear database logs</button></div>`:''}<div class="modal-actions"><button class="btn primary" data-action="close-modal">Done</button></div>`);
 }
 function showInvite(code,role,expiry){setModal(`<h2>One-time invitation ready</h2><p>Send this private code to your ${esc(role)}. It can be redeemed once before ${esc(dateText(expiry))}.</p><label class="field-label">Invitation code</label><input class="field" id="invite-code" readonly value="${esc(code)}"><div class="modal-actions"><button class="btn" data-action="copy-code">Copy code</button><button class="btn primary" data-action="share">Back to members</button></div><div class="tip">The code will not be displayed again after closing. Copy it now. Don't post it publicly.</div>`)}
+// Requires the separately reviewed rfm_clear_logs RPC, with server-side active-admin authorization.
+async function clearLogs(){
+ if(state.mode!=='cloud'||!state.roomId||!isAdmin())throw Error('Only active admins can clear database logs');
+ if(state.busy)return;
+ if(!confirm('Permanently delete ALL activity logs for this RFM group? This cannot be undone. Export the activity log first if you need a copy.'))return;
+ state.busy=true;
+ const button=document.querySelector('[data-action="clear-logs"]');
+ if(button)button.disabled=true;
+ try{
+  await rpc('clear_logs',{p_room:state.roomId});
+  state.data.logs=[];state.logPage=0;state.logSearch='';
+  closeModal();render();toast('Activity logs cleared');
+  try{await refreshCloud()}catch{toast('Logs cleared, but the panel could not refresh. Refresh the page.',true)}
+ }finally{state.busy=false;if(button)button.disabled=false;}
+}
 async function rpc(name, args){const {data,error}=await state.client.rpc('rfm_'+name,args);if(error)throw new Error(error.message||'Request failed');return data}
 async function connectCloud(url,key){if(!window.supabase)throw Error('Cloud library unavailable. Check internet access.');if(!/^https:\/\/[\w.-]+\.supabase\.co\/?$/.test(url.trim()))throw Error('Enter a valid Supabase project URL');if(key.includes('service_role')||key.startsWith('sb_secret_'))throw Error('Do not use a secret key. Use the publishable / anon key.');
  const client=window.supabase.createClient(url.trim().replace(/\/$/,''),key.trim(),{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
@@ -271,6 +286,7 @@ function bind(){
  if(a==='remove-image'){if(!isAdmin())throw Error('Admin only');if(!state.modal?.itemId)return;const id=state.modal.itemId;await saveImage(id,null);closeModal();toast('Photo removed and logged');return}
  if(a==='new-storage'){newStorageModal();return}
  if(a==='share'){shareModal();return}
+ if(a==='clear-logs'){await clearLogs();return}
  if(a==='revoke-member'){if(!isAdmin())throw Error('Admin only');const m=state.data.members.find(x=>x.user_id===el.dataset.user);if(!m)return;if(!confirm('Revoke '+m.name+' access? This immediately prevents future inventory changes.'))return;await rpc('revoke_member',{p_room:state.roomId,p_user:m.user_id});await refreshCloud();shareModal();toast('Member access revoked');return}
  if(a==='change-role'){if(!isAdmin())throw Error('Admin only');const m=state.data.members.find(x=>x.user_id===el.dataset.user);if(!m)return;if(!confirm('Change '+m.name+' to '+el.dataset.role+'?'))return;await rpc('set_member_role',{p_room:state.roomId,p_user:m.user_id,p_role:el.dataset.role});await refreshCloud();shareModal();toast('Role updated');return}
  if(a==='cancel-invite'){if(!isAdmin())throw Error('Admin only');if(!confirm('Cancel this unused invitation?'))return;await rpc('cancel_invite',{p_room:state.roomId,p_invite:el.dataset.invite});await refreshCloud();shareModal();toast('Invitation canceled');return}

@@ -34,6 +34,7 @@ These instructions apply to **this repository only** (`IamBru/Rushhour-RFM-Panel
 | Create new **master catalog** item types | No | Yes |
 | Upload, replace, or remove item photos | No | Yes |
 | Read or export activity logs | No | Yes |
+| Permanently clear activity logs after confirmation | No | Yes |
 | Download inventory backups | No | Yes |
 | Invite, revoke, or manage members | No | Yes |
 | Assign/change admin roles | No | Yes |
@@ -44,7 +45,7 @@ For every privilege-sensitive change, verify both frontend visibility **and** ba
 
 - The **master item catalog** is independent of stock. Creating an item type (e.g., AK-47) must not automatically add it to any storage.
 - Storage quantities are per item and per storage location. Adding, moving, or removing quantity must not delete its master catalog entry when stock reaches zero.
-- Preserve existing IDs, storage records, quantities, and event history. Avoid duplicate item creation or unintended negative quantities.
+- Preserve existing IDs, storage records, quantities, and event history except when an active admin explicitly confirms clearing activity logs through Settings. Avoid duplicate item creation or unintended negative quantities.
 - Activity history is **admin-only** and should identify the actor, action, item, relevant locations, quantity before/after where available, and timestamp. Preserve historical attribution even after member revocation.
 - Admin-only changes to catalog items/images should remain auditable.
 
