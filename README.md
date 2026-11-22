@@ -1,5 +1,13 @@
 # Rushhour-RFM-Panel
 
+## Personal display size
+
+Settings is available to all active members. Display controls scale the interface
+from 80% to 150%, with a reset to 100%. The preference is saved in this browser's
+local storage and restored on page load. Members see only display settings;
+admin management sections and their backend permissions are unchanged. The main
+logo is now 80px square at default scale. No SQL migration is needed for this change.
+
 ## Configured categories and panel logo
 
 Apply `supabase/migrations/202611220006_categories_and_logo.sql` once before

@@ -11,7 +11,7 @@
     button,input,select{font:inherit} button{cursor:pointer} button:disabled{cursor:not-allowed;opacity:.5} svg{flex-shrink:0}
     .shell{max-width:1650px;margin:auto;padding:24px clamp(14px,3vw,44px) 48px}
     .top{display:flex;gap:16px;justify-content:space-between;align-items:center;padding-bottom:22px;flex-wrap:wrap}
-    .brand{display:flex;align-items:center;gap:14px}.mark{background:linear-gradient(135deg,#9f7bea,#7f51e2);width:49px;height:49px;border-radius:16px;display:grid;place-items:center;font-weight:950;font-size:20px;box-shadow:0 4px 30px #7f51e260;letter-spacing:-2px;transform:rotate(-5deg)}
+    .brand{display:flex;align-items:center;gap:14px}.mark{background:linear-gradient(135deg,#9f7bea,#7f51e2);width:80px;height:80px;flex-shrink:0;border-radius:18px;display:grid;place-items:center;font-weight:950;font-size:28px;box-shadow:0 4px 30px #7f51e260;letter-spacing:-2px;transform:rotate(-5deg)}
     .mark.custom-logo{transform:none;background:transparent;letter-spacing:normal;overflow:hidden}.mark img{width:100%;height:100%;object-fit:contain}.category-setting{display:flex;gap:8px;align-items:center;margin:8px 0}.category-setting .field{min-width:0;flex:1}
     .brand h1{font-size:23px;margin:0;letter-spacing:-.8px}.subtitle{color:var(--muted);font-size:12px;margin-top:4px}
     .top-actions,.flex{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;line-height:1.2;border:1px solid var(--stroke);border-radius:11px;padding:10px 14px;background:#211a33;color:var(--text);font-weight:650;font-size:13px;transition:.12s}.btn:hover{border-color:var(--accent);background:#302246}.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn.primary:hover{background:#6f40d2}.btn.soft{background:#7f51e21c;color:#d7c1ff;border-color:#7f51e248}.btn.ghost{background:transparent}.btn.icon{width:34px;height:34px;padding:0;display:grid;place-items:center;font-size:19px}.btn.tiny{padding:5px 9px;border-radius:8px;font-size:12px}.btn.danger{color:#ffb2bb;border-color:#7a4159}.btn.full{width:100%}
@@ -195,7 +195,7 @@ function renderContent(){
 }
 function renderHeader(showActions){return `<header class="top"><div class="brand"><div class="mark${state.data?.room?.logo_data?' custom-logo':''}">${state.data?.room?.logo_data?`<img src="${esc(state.data.room.logo_data)}" alt="RFM logo">`:'RFM'}</div><div><h1>RFM Panel</h1><div class="subtitle">${esc(state.data?.room?.name||'Simple shared inventory')}</div></div></div>
  <div class="top-actions"><span class="pill"><i class="dot ${state.mode==='local'?'local':''}"></i>${state.mode==='cloud'?'RFM connected · syncs every 5s':'Local demo'}</span>
- ${showActions?`<button class="btn ghost" data-action="profile">👤 ${esc(currentName())}</button>${isAdmin()?'<button class="btn ghost" data-action="export">↓ Backup</button>':''}${state.mode==='cloud'?(isAdmin()?'<button class="btn ghost" data-action="share">⚙ Settings</button>':''):'<button class="btn ghost" data-action="configure">⚙ Sharing</button>'}`:(location.hostname.endsWith('.github.io')?'':'<button class="btn ghost" data-action="configure">⚙ Settings</button>')}</div></header>`}
+ ${showActions?`<button class="btn ghost" data-action="profile">👤 ${esc(currentName())}</button>${isAdmin()?'<button class="btn ghost" data-action="export">↓ Backup</button>':''}<button class="btn ghost" data-action="share">&#9881; Settings</button>}`:(location.hostname.endsWith('.github.io')?'':'<button class="btn ghost" data-action="configure">⚙ Settings</button>')}</div></header>`}
 function renderFooter(){return `<footer>RFM Storage Board · Item pictures · Drag-and-drop inventory · Every change is logged ${state.mode==='cloud'?'in the shared database':'in this browser'}.</footer>`}
 function actionIcon(kind){return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${kind==='delete'?'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>':'<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>'}</svg>`}
 function adminControls(kind,id,name){return isAdmin()?`<div class="entity-actions"><button type="button" class="photo-button danger" data-action="delete-entity" data-kind="${kind}" data-id="${esc(id)}" title="Delete ${esc(name)}" aria-label="Delete ${esc(name)}">${actionIcon('delete')}</button><button type="button" class="photo-button" data-action="edit-entity" data-kind="${kind}" data-id="${esc(id)}" title="Edit ${esc(name)}" aria-label="Edit ${esc(name)}">${actionIcon('edit')}</button></div>`:''}
@@ -376,12 +376,21 @@ async function saveLogo(v){
  if(state.mode==='cloud'){await rpc('set_logo',{p_room:state.roomId,p_image_data:data});await refreshCloud()}
  else{state.data.room.logo_data=data;logEntry('logo_updated','','','',0,remove?'Removed panel logo':'Changed panel logo');localSave();render()}
 }
+const DISPLAY_SCALES=[80,90,100,110,125,150];
+function displayScale(){const saved=Number(localStorage.getItem('rfm_display_scale'));return DISPLAY_SCALES.includes(saved)?saved:100}
+function applyDisplayScale(value){
+ const scale=Number(value);if(!DISPLAY_SCALES.includes(scale))throw Error('Choose a supported display size');
+ document.documentElement.style.zoom=String(scale/100);
+ localStorage.setItem('rfm_display_scale',String(scale));
+}
+function displaySettings(){return `<div class="setup-card"><h3>Display</h3><p>Scale text, buttons, images and panels on this browser only.</p><label class="field-label" for="display-scale">Interface size</label><select class="field" id="display-scale">${DISPLAY_SCALES.map(n=>`<option value="${n}" ${n===displayScale()?'selected':''}>${n}%${n===100?' (Default)':''}</option>`).join('')}</select><button class="btn soft" type="button" data-action="reset-scale" style="margin-top:12px">Reset to default</button></div>`}
 function shareModal(){
- if(!isAdmin()){toast('Only admins can open settings',true);return;}
+ if(state.mode==='cloud'&&(!state.roomId||!state.data?.viewer))throw Error('Active membership required');
+ if(!isAdmin()){setModal(`<h2>Settings</h2>${displaySettings()}<div class="modal-actions"><button class="btn primary" data-action="close-modal">Done</button></div>`);return;}
  const d=state.data;
  const rows=(d.members||[]).map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff17"><div><b>${esc(m.name)}</b> <span style="color:#ac9cc6;font-size:11px">${esc(m.role)}${m.active?'':' · revoked'}</span></div>${m.active&&m.user_id!==d.viewer.user_id?`<div class="flex"><button class="btn tiny" data-action="change-role" data-user="${esc(m.user_id)}" data-role="${m.role==='admin'?'member':'admin'}">${m.role==='admin'?'Demote':'Make admin'}</button><button class="btn tiny danger" data-action="revoke-member" data-user="${esc(m.user_id)}">Revoke</button></div>`:''}</div>`).join('');
  const invites=(d.invites||[]).map(inv=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:7px 0"><span style="font-size:12px">Unused ${esc(inv.role)} invite · expires ${esc(dateText(inv.expires_at))}</span><button class="btn tiny danger" data-action="cancel-invite" data-invite="${esc(inv.id)}">Cancel</button></div>`).join('');
- setModal(`<h2>Settings</h2>${catalogSettings()}<h3>Members & invitations</h3><p>Only admins can invite, remove or promote members. Each invitation is usable once and expires after 14 days.</p><form id="invite-form"><label class="field-label">Invite as</label><select class="field" name="role"><option value="member">Member</option><option value="admin">Admin</option></select>${modalActions('Create one-time invite')}</form><div style="margin-top:18px"><b style="font-size:13px">Members</b>${rows||'<div class="help">No members yet</div>'}</div>${invites?`<div style="margin-top:20px"><b style="font-size:13px">Unused invitations</b>${invites}</div>`:''}${state.mode==='cloud'?`<div class="setup-card" style="margin-top:20px"><b>Activity history</b><p>Permanently delete all activity logs for this RFM group. Inventory, catalog items and memberships stay unchanged. Export the activity log first if you want to keep a copy.</p><button class="btn danger full" data-action="clear-logs" type="button">Clear database logs</button></div>`:''}<div class="modal-actions"><button class="btn primary" data-action="close-modal">Done</button></div>`);
+ setModal(`<h2>Settings</h2>${displaySettings()}${catalogSettings()}<h3>Members & invitations</h3><p>Only admins can invite, remove or promote members. Each invitation is usable once and expires after 14 days.</p><form id="invite-form"><label class="field-label">Invite as</label><select class="field" name="role"><option value="member">Member</option><option value="admin">Admin</option></select>${modalActions('Create one-time invite')}</form><div style="margin-top:18px"><b style="font-size:13px">Members</b>${rows||'<div class="help">No members yet</div>'}</div>${invites?`<div style="margin-top:20px"><b style="font-size:13px">Unused invitations</b>${invites}</div>`:''}${state.mode==='cloud'?`<div class="setup-card" style="margin-top:20px"><b>Activity history</b><p>Permanently delete all activity logs for this RFM group. Inventory, catalog items and memberships stay unchanged. Export the activity log first if you want to keep a copy.</p><button class="btn danger full" data-action="clear-logs" type="button">Clear database logs</button></div>`:''}<div class="modal-actions"><button class="btn primary" data-action="close-modal">Done</button></div>`);
 }
 function showInvite(code,role,expiry){setModal(`<h2>One-time invitation ready</h2><p>Send this private code to your ${esc(role)}. It can be redeemed once before ${esc(dateText(expiry))}.</p><label class="field-label">Invitation code</label><input class="field" id="invite-code" readonly value="${esc(code)}"><div class="modal-actions"><button class="btn" data-action="copy-code">Copy code</button><button class="btn primary" data-action="share">Back to members</button></div><div class="tip">The code will not be displayed again after closing. Copy it now. Don't post it publicly.</div>`)}
 // The RPC rechecks active-admin authorization before clearing database history.
@@ -456,6 +465,7 @@ function bind(){
  if(a==='remove-all'){await removeAll();return}
  if(a==='close-modal'){closeModal();return}
  if(a==='close-modal-overlay'){if(e.target===el)closeModal();return}
+ if(a==='reset-scale'){applyDisplayScale(100);const select=$('#display-scale');if(select)select.value='100';return}
  if(a==='configure'){setupModal();return}
  if(a==='profile'){profileModal();return}
  if(a==='edit-entity'){editEntityModal(el.dataset.kind,el.dataset.id);return}
@@ -482,6 +492,7 @@ function bind(){
  }catch(err){toast(err.message||'Something went wrong',true)}
  });
  document.addEventListener('change',e=>{
+  if(e.target.id==='display-scale'){try{applyDisplayScale(e.target.value)}catch(err){toast(err.message,true)}return;}
   if(e.target.id==='item-image-file'){
     const file=e.target.files?.[0];
     if(!file)return;
@@ -534,6 +545,6 @@ function bind(){
  document.addEventListener('dragend',()=>{state.drag=null;document.querySelectorAll('.dragover').forEach(x=>x.classList.remove('dragover'))});
  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 }
-async function boot(){try{state.data=JSON.parse(localStorage.getItem('rfm_local')||'null')||seedData()}catch{state.data=seedData()}localSave();bind();render();let url=localStorage.getItem('rfm_url')||CONFIG.SUPABASE_URL,key=localStorage.getItem('rfm_key')||CONFIG.SUPABASE_ANON_KEY;if(url&&key){try{await connectCloud(url,key)}catch(err){state.mode='local';state.roomId=null;state.client=null;toast('Shared connection failed: '+err.message,true);render()}}}
+async function boot(){document.documentElement.style.zoom=String(displayScale()/100);try{state.data=JSON.parse(localStorage.getItem('rfm_local')||'null')||seedData()}catch{state.data=seedData()}localSave();bind();render();let url=localStorage.getItem('rfm_url')||CONFIG.SUPABASE_URL,key=localStorage.getItem('rfm_key')||CONFIG.SUPABASE_ANON_KEY;if(url&&key){try{await connectCloud(url,key)}catch(err){state.mode='local';state.roomId=null;state.client=null;toast('Shared connection failed: '+err.message,true);render()}}}
 boot();
 </script></body></html>

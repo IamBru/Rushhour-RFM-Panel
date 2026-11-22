@@ -23,6 +23,7 @@ These instructions apply to **this repository only** (`IamBru/Rushhour-RFM-Panel
 - Automatically restore an **active** membership if only the browser's saved group selection disappears and the Supabase authentication session remains. Never restore a revoked member. Do not reintroduce "Leave this group view".
 - Revocation and all access restrictions must be enforced by Supabase, not merely by hidden UI buttons. Group creation was disabled for website clients at the RPC privilege layer; preserve that protection.
 - Keep the dark purple/black theme and simple responsive interface; prefer improving the existing design incrementally over a wholesale redesign.
+- All active members can open Settings for personal browser-local interface scaling (80–150%, default 100%). Admin management sections remain admin-only; changing display size never changes shared data or roles.
 
 ## Authorization matrix
 

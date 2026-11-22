@@ -168,3 +168,25 @@ test('logo renders from room data and removing it restores the text mark',async(
  assert(!f.run('renderHeader(true)').includes('alt="RFM logo"'));
  assert.equal(f.run('state.data.room.logo_data'),null);
 });
+test('members see display settings but no admin settings',()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';state.data.viewer={role:'member'}");
+ assert(f.run('renderHeader(true)').includes('data-action="share"'));
+ f.run('shareModal()');const markup=f.nodes['#modal-root'].innerHTML;
+ assert(markup.includes('id="display-scale"'));
+ for(const control of ['invite-form','category-form','logo-form','clear-logs','change-role'])assert(!markup.includes(control));
+ f.run("state.data.viewer.role='admin';shareModal()");
+ assert(f.nodes['#modal-root'].innerHTML.includes('id="display-scale"'));
+ assert(f.nodes['#modal-root'].innerHTML.includes('invite-form'));
+});
+test('display scaling persists locally and rejects unsupported values',()=>{
+ const f=fixture();const saved={};
+ f.ctx.localStorage.getItem=k=>saved[k]??null;
+ f.ctx.localStorage.setItem=(k,v)=>saved[k]=v;
+ f.ctx.document.documentElement={style:{}};
+ assert.equal(f.run('displayScale()'),100);
+ f.run('applyDisplayScale(125)');assert.equal(f.ctx.document.documentElement.style.zoom,'1.25');
+ assert.equal(f.run('displayScale()'),125);
+ assert.throws(()=>f.run('applyDisplayScale(999)'),/supported/);
+ f.run('applyDisplayScale(100)');assert.equal(f.run('displayScale()'),100);
+ saved.rfm_display_scale='invalid';assert.equal(f.run('displayScale()'),100);
+});
