@@ -5,10 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#7f51e2">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
   <title>RFM Panel • Storage</title>
+  <link rel="stylesheet" href="./assets/fonts/fonts.css">
   <style>
     /* Shared scrollbar colors, including nested catalog, history and dialog scrollers. */
     *{scrollbar-color:#7f51e2 #171327;scrollbar-width:auto}
@@ -18,7 +16,7 @@
     ::-webkit-scrollbar-thumb:hover{background:#9f7bea}
     @media(forced-colors:active){*{scrollbar-color:auto}}
     :root { color-scheme: dark; --bg:#0c0a15;--panel:#171327;--panel2:#201a33;--panel3:#261e3d;--stroke:#39304d;--text:#f7f4ff;--muted:#a69bbd;--accent:#7f51e2;--accent2:#d5b7ff;--green:#6addbb;--red:#fb8b9b;--shadow:0 20px 60px #0004; }
-    * {box-sizing:border-box} html,body{margin:0;min-height:100%;background:radial-gradient(ellipse at 78% -20%,#33215c90,transparent 42%),var(--bg);font-family:"Barlow Condensed","Arial Narrow",Arial,sans-serif;font-style:italic;font-weight:600;color:var(--text)}
+    * {box-sizing:border-box} html,body{margin:0;min-height:100%;background:radial-gradient(ellipse at 78% -20%,#33215c90,transparent 42%),var(--bg);font-family:"Saira",Arial,sans-serif;font-style:normal;font-weight:400;color:var(--text)}
     button,input,select,textarea,option{font-family:inherit;font-style:inherit} button,input,select,textarea{font:inherit} button{cursor:pointer} button:disabled{cursor:not-allowed;opacity:.5} svg{flex-shrink:0}
     .shell{max-width:1650px;margin:auto;padding:24px clamp(14px,3vw,44px) 48px}
     .top{display:flex;gap:16px;justify-content:space-between;align-items:center;padding-bottom:22px;flex-wrap:wrap}
@@ -121,6 +119,12 @@
     .rank-sub{border:1px dashed var(--accent2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--accent2);text-align:center;overflow-wrap:anywhere;max-width:100%}
     @container panel-layout (max-width:1100px){.ranks-layout{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}.ranks-layout>aside{grid-column:1 / -1}}
     @container panel-layout (max-width:720px){.ranks-layout{grid-template-columns:minmax(0,1fr)}.rank-chart{grid-row:1}.rank-crews{gap:6px}.rank-card{padding:10px 5px}.rank-crew strong{font-size:11px}}
+    /* Normal condensed font files intentionally use browser-synthesized italics. */
+    h1,h2,h3,h4,h5,h6,.title,.storage-name,.item-name,.stock-name,.rank-card strong,.price-table td:first-child{
+      font-family:"Saira Condensed","Arial Narrow",sans-serif;font-weight:800!important;font-style:italic;text-transform:uppercase;font-synthesis:style;
+    }
+    .stock-name .item-detail{font-family:"Saira",Arial,sans-serif;font-weight:400;font-style:normal;text-transform:none}
+    .stat-value,.qty,.stock-qty,.bubble{font-family:"Saira",Arial,sans-serif;font-weight:700;font-style:normal}
   </style>
 </head>
 <body><main id="app" class="shell"></main><div id="modal-root"></div><div id="toast-root"></div>
