@@ -1,5 +1,34 @@
 # Rushhour-RFM-Panel
 
+## Storage groups
+
+The board's **New storage group** button creates a container for storage locations.
+Each group has its own **New storage** button. Items can be added to or moved
+between storages, including storages in different groups, but cannot be placed
+directly in a group. Active members and admins can create both groups and storages.
+Move selectors show `Group / Storage` to distinguish similarly named locations.
+
+Before pushing this frontend, run
+`supabase/migrations/202611220002_storage_groups.sql` **once** in the existing
+project's Supabase SQL Editor. It creates a Main storage group for each existing
+RFM room and assigns existing storages to it without changing storage IDs, stock,
+catalog items or history. It does not create any RFM membership groups.
+This migration is transactional; if it fails, the changes roll back together.
+
+The new table has RLS enabled and no direct browser table privileges. Group and
+storage creation use RPCs that enforce existing active membership checks. A
+composite foreign key requires each storage and its parent group to belong to the
+same RFM room. Snapshot log/member/invitation access remains admin-only. The old
+two-argument storage RPC remains supported and places storages in the oldest group
+for already-open older frontend versions. Existing storages remain visible if the
+new frontend is opened before the migration, but group creation requires the SQL.
+
+Before production use, verify in a test database: migration preserves existing
+stock and IDs, members/admins can create empty groups and child storages, revoked
+users cannot read/create them, cross-room parent IDs are rejected, and moving
+stock between groups preserves totals. SQL execution and desktop/mobile visual
+checks have not been run locally. Frontend behavior is checked with mocked data.
+
 ## Clear activity logs
 
 Admin Settings includes a confirmed **Clear database logs** action. The frontend
