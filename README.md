@@ -1,5 +1,26 @@
 # Rushhour-RFM-Panel
 
+## Remove all and readable deletion history
+
+Apply `supabase/migrations/202611220004_removal_and_readable_audit.sql` once after
+migration 003, then push the frontend. **Remove all** in the removal dialog deletes
+the selected item's stock row from that storage using the current database
+quantity, and records the removed quantity. It retains the master item and stock
+in other storages. Ordinary quantity changes now remove resulting zero-stock rows.
+
+Delete confirmations use the panel's themed modal, including cancellation through
+Escape or the backdrop. Deletion history renders names and positive quantities
+for both the old text/JSON format and the new structured audit format, without
+showing UUIDs or raw JSON. The detailed audit data remains stored in the database.
+Entity deletion still physically deletes records and cascades to stock; it does
+not merely hide them in the UI. It intentionally preserves activity history.
+
+The owner reports the previously deployed management features are working.
+Migration 004 has not been applied by Codex; database execution and browser visual
+checks remain pending. The 11 fixture-based frontend tests pass. Unused pagination
+state and native confirmation calls were removed; migrations and regression tests
+remain useful and are retained.
+
 ## Admin inventory settings and deletion
 
 Apply `supabase/migrations/202611220003_admin_inventory_management.sql` once in

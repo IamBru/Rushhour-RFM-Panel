@@ -11,7 +11,7 @@ function fixture(){
   document:{querySelector:s=>nodes[s]??=( {innerHTML:''}),querySelectorAll:()=>[],addEventListener:(n,f)=>events[n]=f},
   setTimeout(){},clearTimeout(){},window:{},File:class{},confirm:()=>confirmed});
  const run=s=>vm.runInContext(s,ctx);
- run(script);run('state.data=seedData();bind();');
+ run(script);ctx.realConfirmAction=run('confirmAction');ctx.testConfirmation=()=>confirmed;run('confirmAction=async()=>testConfirmation();state.data=seedData();bind();');
  return {run,ctx,nodes,events,confirm:v=>confirmed=v};
 }
 test('admin controls only appear in their entity headers; members retain Add items',()=>{
@@ -82,4 +82,39 @@ test('editing names preserves IDs and stock; storage images can be removed',asyn
  await f.run('saveEntity({get:k=>values[k]||null})');
  assert.equal(f.run('state.data.storage_groups[0].name'),'Renamed group');
  assert.equal(f.run('JSON.stringify(state.data.stock)'),stock);
+});
+test('Remove all removes only the selected item/storage pair and retains the catalog',async()=>{
+ const f=fixture();f.run("quantityModal({action:'remove',itemId:'item-0',fromId:'storage-0'})");
+ assert(f.nodes['#modal-root'].innerHTML.includes('data-action="remove-all"'));
+ const other=f.run("stockQty('item-0','storage-1')");
+ await f.run('removeAll()');
+ assert.equal(f.run("state.data.stock.some(x=>x.item_id==='item-0'&&x.storage_id==='storage-0')"),false);
+ assert.equal(f.run("stockQty('item-0','storage-1')"),other);
+ assert(f.run("state.data.items.some(x=>x.id==='item-0')"));
+});
+test('cloud Remove all calls the atomic RPC and preserves data on error',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';quantityModal({action:'remove',itemId:'item-0',fromId:'storage-0'})");
+ f.ctx.request=null;f.run("rpc=async(name,args)=>{request={name,args};throw Error('Denied')}");
+ const before=f.run('JSON.stringify(state.data.stock)');
+ await assert.rejects(f.run('removeAll()'),/Denied/);
+ assert.equal(f.ctx.request.name,'remove_all_stock');
+ assert.equal(f.ctx.request.args.p_storage,'storage-0');
+ assert.equal('p_quantity' in f.ctx.request.args,false);
+ assert.equal(f.run('JSON.stringify(state.data.stock)'),before);
+ assert.equal(f.run('state.busy'),false);
+});
+test('themed confirmations cancel on close and only resolve true on confirmation',async()=>{
+ const f=fixture();f.run('confirmAction=realConfirmAction');
+ let pending=f.run("confirmAction('Delete this?','Delete item','Delete')");
+ assert(f.nodes['#modal-root'].innerHTML.includes('<h2>Delete item</h2>'));
+ f.run('closeModal()');assert.equal(await pending,false);
+ pending=f.run("confirmAction('Delete this?')");
+ await f.events.click({target:{closest:()=>({dataset:{action:'confirm-action'}})}});
+ assert.equal(await pending,true);
+});
+test('legacy and new deletion logs show names and quantities without database IDs or JSON',()=>{
+ const f=fixture();f.ctx.entry={action:'storage_deleted',detail:'Deleted storage Toolbox (00000000-0000-0000-0000-000000000001); removed stock: [{"item":"Crowbar","storage":"Toolbox","before":3,"after":0}]'};
+ let text=f.run('activityDescription(entry)');assert(text.includes('Toolbox'));assert(text.includes('3 &times; Crowbar'));assert(!text.includes('00000000'));assert(!text.includes('"before"'));
+ f.ctx.entry={action:'item_deleted',detail:JSON.stringify({name:'<script>',stock:[{item:'AK-47',storage:'Toolbox',before:2},{item:'Other',storage:'Empty',before:0}]})};
+ text=f.run('activityDescription(entry)');assert(text.includes('&lt;script&gt;'));assert(text.includes('2 &times; AK-47'));assert(!text.includes('Empty'));
 });

@@ -54,6 +54,7 @@ For every privilege-sensitive change, verify both frontend visibility **and** ba
 - Admins may explicitly delete a catalog item and all its stock, a storage and its stock, or a storage group with its child storages and stock after confirmation. These actions preserve prior activity history and add an attributed deletion record. Storage/group deletion must retain master catalog items. This is an explicit exception to preserving the deleted records above.
 - Item settings edit name, category, details and picture. Storage settings edit name and picture; group settings edit the group name. Members retain quantity controls and an Add items action inside each storage.
 - Dropping a stored item outside all storage cards on the page opens the removal quantity prompt; dropping on another storage opens Move. Catalog items dropped outside storages do nothing. Quantity fields start blank.
+- The removal dialog includes Remove all for the selected item/storage pair, using the current database quantity atomically. Deletion confirmations use themed modals. Show deletion logs as readable names and quantities while retaining detailed audit data in the database.
 
 ## Code and repository workflow
 
