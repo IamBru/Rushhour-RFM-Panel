@@ -364,3 +364,24 @@ test('cloud rank failure preserves drafts and data; stale local edits are reject
  await assert.rejects(f.run("saveRank(new Map([['name','New Boss']]))"),/denied/);assert.equal(f.run('JSON.stringify(state.rankBoard)'),before);assert.equal(f.nodes['#modal-root'].innerHTML,modal);
  f.run("state.mode='local';state.rankBoard.ranks[0].version=2");await assert.rejects(f.run("saveRank(new Map([['name','New Boss']]))"),/changed/);
 });
+
+
+test('vendor filters and numeric multi-value sorting are independent and do not change data',()=>{
+ const f=fixture();f.run("state.priceBoard={vendors:[{id:'a',name:'Pawn'},{id:'b',name:'Fence'}],entries:[{id:'1',vendor_id:'a',name:'Item 10',quality:'Rare',rolls:'100'},{id:'2',vendor_id:'a',name:'Item 2',quality:'Common',rolls:'9'},{id:'3',vendor_id:'a',name:'Item 3',quality:'Rare',rolls:'37/45'},{id:'4',vendor_id:'a',name:'Item 4',quality:'Rare',rolls:'37/40'},{id:'5',vendor_id:'b',name:'Other',quality:'Rare',rolls:'1'}]}");
+ const before=f.run('JSON.stringify(state.priceBoard)');
+ assert.equal(f.run("filteredPrices('a').map(x=>x.id).join(',')"),'2,3,4,1');
+ f.run("priceView('a').sort='rolls'");assert.equal(f.run("filteredPrices('a').map(x=>x.id).join(',')"),'2,4,3,1');
+ f.run("priceView('a').direction=-1");assert.equal(f.run("filteredPrices('a').map(x=>x.id).join(',')"),'1,3,4,2');
+ f.run("priceView('a').quality='Rare';priceView('a').search=' item 3 '");assert.equal(f.run("filteredPrices('a').map(x=>x.id).join(',')"),'3');
+ assert.equal(f.run("filteredPrices('b').length"),1);assert.equal(f.run('JSON.stringify(state.priceBoard)'),before);
+ f.run("state.mode='cloud';state.data.viewer={role:'member'}");const rendered=f.run('renderPrices()');assert.match(rendered,/price-sort/);assert.match(rendered,/data-price-quality/);assert.doesNotMatch(rendered,/data-action="price-edit"/);
+});
+test('vendor header toggles sorting, filters survive new data, and reset affects only one vendor',async()=>{
+ const f=fixture();f.run("render=()=>{};priceView('a').search='Gold';priceView('b').quality='Rare'");
+ const target={closest:()=>({dataset:{action:'price-sort',vendor:'a',key:'rolls'}})};
+ await f.events.click({target});assert.equal(f.run("priceView('a').direction"),1);
+ await f.events.click({target});assert.equal(f.run("priceView('a').direction"),-1);
+ f.run("state.priceBoard={entries:[{id:'new',vendor_id:'a',name:'Gold',quality:'Epic',rolls:'10'}]}");assert.equal(f.run("filteredPrices('a').length"),1);
+ await f.events.click({target:{closest:()=>({dataset:{action:'price-filter-reset',vendor:'a'}})}});
+ assert.equal(f.run("priceView('a').search"),'');assert.equal(f.run("priceView('a').sort"),'name');assert.equal(f.run("priceView('b').quality"),'Rare');
+});

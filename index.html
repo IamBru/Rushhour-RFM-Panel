@@ -140,6 +140,11 @@
     .rank-roster{margin-top:20px}.rank-member{padding:12px 0;border-bottom:1px solid var(--stroke)}
     .rank-member strong{font-family:"Saira",sans-serif;font-style:normal;text-transform:none}
     .rank-pair>.rank-card{flex-direction:column;justify-self:stretch}.modal textarea{resize:vertical}
+    .price-filters{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:0 18px 16px}
+    .price-filters label{display:grid;gap:6px;flex:1 1 180px;min-width:0;font-size:12px;color:var(--muted)}
+    .price-sort{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:4px 0;border:0;background:transparent;color:inherit;font-weight:700;text-align:left}
+    .price-sort span{font-size:10px;color:var(--accent2)}.price-sort:hover{color:var(--accent2)}
+    .price-sort:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
   </style>
 </head>
 <body><main id="app" class="shell"></main><div id="modal-root"></div><div id="toast-root"></div>
@@ -163,7 +168,7 @@ function seedData(){
  const storages = ['Gun Rack 1','Gun Rack 2','Gun Rack 3','Gun Stash','Utilities'].map((name,i)=>({id:'storage-'+i,name,storage_group_id:'local-main'}));
  return {room:{id:'local',name:'RFM Inventory',join_code:''},storage_groups:[{id:'local-main',name:'Main storage group'}],items,storages,stock:initialStock.map(([a,b,q])=>({item_id:items[a].id,storage_id:storages[b].id,quantity:q})),logs:[],members:[]};
 }
-let state = {mode:'local',data:null,client:null,roomId:null,name:localStorage.getItem('rfm_name')||'',section:'storage',priceBoard:null,priceError:'',rankBoard:null,rankError:'',search:'',filter:'All',logSearch:'',busy:false,lastSync:null,modal:null,drag:null};
+let state = {mode:'local',data:null,client:null,roomId:null,name:localStorage.getItem('rfm_name')||'',section:'storage',priceViews:Object.create(null),priceBoard:null,priceError:'',rankBoard:null,rankError:'',search:'',filter:'All',logSearch:'',busy:false,lastSync:null,modal:null,drag:null};
 function localSave(){localStorage.setItem('rfm_local',JSON.stringify(state.data));}
 function toast(msg,error=false){const el=$('#toast-root');el.innerHTML=`<div class="toast ${error?'error':''}">${esc(msg)}</div>`;clearTimeout(window._toastTimeout);window._toastTimeout=setTimeout(()=>el.innerHTML='',3200)}
 function icon(cat){return cat==='Shotguns'?'◈':cat==='Pistols'?'◇':'▦'}
@@ -355,9 +360,33 @@ async function saveRankAssignment(v){
  else{const before=state.data.family_assignments.find(a=>a.user_id===user)||null;const after=key?{user_id:user,rank_key:key,promotion}:null;state.data.family_assignments=state.data.family_assignments.filter(a=>a.user_id!==user);if(after)state.data.family_assignments.push(after);rankLocalAudit('member_rank_assigned',before,after);localSave()}
  closeModal();await loadRanks();render();toast('Family rank updated');
 }
+function priceView(id){return state.priceViews[id]??={search:'',quality:'',sort:'name',direction:1}}
+function filteredPrices(id){
+ const v=priceView(id),compare=(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:'base'});
+ return (state.priceBoard?.entries||[]).filter(x=>x.vendor_id===id&&(!v.quality||x.quality===v.quality)&&x.name.toLowerCase().includes(v.search.trim().toLowerCase())).sort((a,b)=>{
+  let n=0;
+  if(v.sort==='rolls'){
+   const aa=String(a.rolls).split('/').map(Number),bb=String(b.rolls).split('/').map(Number);
+   for(let i=0;i<Math.min(aa.length,bb.length)&&!n;i++)n=aa[i]-bb[i];
+   if(!n)n=aa.length-bb.length;
+  }else n=compare(a[v.sort],b[v.sort]);
+  return n*v.direction||compare(a.name,b.name)||compare(a.id,b.id);
+ });
+}
+function priceHeaders(id){const v=priceView(id);return [['name','Item'],['quality','Quality'],['rolls','Rolls']].map(([key,label])=>`<th scope="col" aria-sort="${v.sort===key?(v.direction===1?'ascending':'descending'):'none'}"><button class="price-sort" data-action="price-sort" data-vendor="${esc(id)}" data-key="${key}" title="${key==='rolls'?'Sort numerically by the first rolls value, then subsequent values':'Sort by '+label}">${label}<span aria-hidden="true">${v.sort===key?(v.direction===1?'&#9650;':'&#9660;'):'&#8597;'}</span></button></th>`).join('')}
+function priceFilterBar(vendor){
+ const v=priceView(vendor.id),qualities=[...new Set((state.priceBoard?.entries||[]).filter(x=>x.vendor_id===vendor.id).map(x=>x.quality).concat(v.quality?[v.quality]:[]))].sort((a,b)=>a.localeCompare(b));
+ return `<div class="price-filters"><label>Find item<input class="search" type="search" data-price-search="${esc(vendor.id)}" value="${esc(v.search)}" placeholder="Search items..." aria-label="Search ${esc(vendor.name)} items"></label><label>Quality<select class="field" data-price-quality="${esc(vendor.id)}" aria-label="Filter ${esc(vendor.name)} quality"><option value="">All qualities</option>${qualities.map(q=>`<option value="${esc(q)}" ${q===v.quality?'selected':''}>${esc(q)}</option>`).join('')}</select></label><button class="btn ghost" data-action="price-filter-reset" data-vendor="${esc(vendor.id)}">Reset</button></div>`;
+}
+function updatePriceSearch(input){
+ const id=input.dataset.priceSearch,start=input.selectionStart,end=input.selectionEnd;
+ priceView(id).search=input.value;render();
+ const replacement=Array.from(document.querySelectorAll('[data-price-search]')).find(x=>x.dataset.priceSearch===id);
+ if(replacement){replacement.focus({preventScroll:true});if(start!==null)replacement.setSelectionRange(start,end)}
+}
 function renderPrices(){
  const board=state.priceBoard;
- return `<div class="board-head"><div><h2 class="title">Item Prices</h2><p class="help">Items sold to vendors, separate from storage inventory.</p></div>${isAdmin()&&board?'<button class="btn soft" data-action="price-edit" data-kind="vendor">+ New vendor</button>':''}</div>${state.priceError?`<div class="empty">${esc(state.priceError)}<button class="btn" data-action="reload-prices">Retry</button></div>`:''}${!board?'<div class="empty">Vendor prices are not loaded yet.</div>':`<div class="price-vendors">${board.vendors.map(v=>`<section class="panel"><div class="storage-group-head price-head"><h2 class="storage-group-title">${esc(v.name)}</h2>${isAdmin()?`<div class="flex"><button class="btn soft" data-action="price-edit" data-kind="entry" data-vendor="${esc(v.id)}">+ Add item</button>${priceControls('vendor',v.id)}</div>`:''}</div><div class="price-table-wrap" data-scroll-key="vendor-${esc(v.id)}"><table class="price-table"><thead><tr><th>Item</th><th>Quality</th><th>Rolls</th>${isAdmin()?'<th>Actions</th>':''}</tr></thead><tbody>${board.entries.filter(x=>x.vendor_id===v.id).map(x=>`<tr data-scroll-anchor="price-${esc(x.id)}"><td>${esc(x.name)}</td><td>${esc(x.quality)}</td><td>${esc(x.rolls)}</td>${isAdmin()?`<td>${priceControls('entry',x.id)}</td>`:''}</tr>`).join('')||`<tr><td colspan="${isAdmin()?4:3}" class="help">No items listed for this vendor yet.</td></tr>`}</tbody></table></div></section>`).join('')||'<div class="empty">No vendors yet. An admin can add Pawn Shop, Fence, or other vendors.</div>'}</div>`}`;
+ return `<div class="board-head"><div><h2 class="title">Item Prices</h2><p class="help">Items sold to vendors, separate from storage inventory.</p></div>${isAdmin()&&board?'<button class="btn soft" data-action="price-edit" data-kind="vendor">+ New vendor</button>':''}</div>${state.priceError?`<div class="empty">${esc(state.priceError)}<button class="btn" data-action="reload-prices">Retry</button></div>`:''}${!board?'<div class="empty">Vendor prices are not loaded yet.</div>':`<div class="price-vendors">${board.vendors.map(v=>`<section class="panel"><div class="storage-group-head price-head"><h2 class="storage-group-title">${esc(v.name)}</h2>${isAdmin()?`<div class="flex"><button class="btn soft" data-action="price-edit" data-kind="entry" data-vendor="${esc(v.id)}">+ Add item</button>${priceControls('vendor',v.id)}</div>`:''}</div>${priceFilterBar(v)}<div class="price-table-wrap" data-scroll-key="vendor-${esc(v.id)}"><table class="price-table"><thead><tr>${priceHeaders(v.id)}${isAdmin()?'<th>Actions</th>':''}</tr></thead><tbody>${filteredPrices(v.id).map(x=>`<tr data-scroll-anchor="price-${esc(x.id)}"><td>${esc(x.name)}</td><td>${esc(x.quality)}</td><td>${esc(x.rolls)}</td>${isAdmin()?`<td>${priceControls('entry',x.id)}</td>`:''}</tr>`).join('')||`<tr><td colspan="${isAdmin()?4:3}" class="help">${board.entries.some(x=>x.vendor_id===v.id)?'No items match these filters.':'No items listed for this vendor yet.'}</td></tr>`}</tbody></table></div></section>`).join('')||'<div class="empty">No vendors yet. An admin can add Pawn Shop, Fence, or other vendors.</div>'}</div>`}`;
 }
 function priceControls(kind,id){return `<div class="entity-actions"><button class="photo-button danger" data-action="price-delete" data-kind="${kind}" data-id="${esc(id)}" aria-label="Delete ${kind}">${actionIcon('delete')}</button><button class="photo-button" data-action="price-edit" data-kind="${kind}" data-id="${esc(id)}" aria-label="Edit ${kind}">${actionIcon('edit')}</button></div>`}
 async function loadPrices(){
@@ -694,7 +723,7 @@ async function refreshCloud(silent=false){if(!state.roomId)return;try{let data=a
   while(logs.length<target){const limit=Math.min(1000,target-logs.length);const batch=await rpc('get_activity',{p_room:state.roomId,p_limit:limit,p_offset:logs.length});logs.push(...batch);if(batch.length<limit)break;}
   data.logs=logs;
  }
- state.data=data;if(state.section==='ranks'){try{await loadRanks()}catch{}}if(state.section==='prices'){try{await loadPrices()}catch{}}state.name=data.viewer?.name||state.name;if(!isAdmin()&&state.section==='activity')state.section='storage';state.lastSync=Date.now();if(!silent||!document.activeElement||!['item-search','log-search'].includes(document.activeElement.id)){render()}}catch(e){if(/membership is inactive|do not have access/i.test(e.message)){state.roomId=null;localStorage.removeItem('rfm_room_id');state.section='storage';closeModal();render();toast('Your RFM access has been revoked.',true);return;}throw e;}}
+ state.data=data;if(state.section==='ranks'){try{await loadRanks()}catch{}}if(state.section==='prices'){try{await loadPrices()}catch{}}state.name=data.viewer?.name||state.name;if(!isAdmin()&&state.section==='activity')state.section='storage';state.lastSync=Date.now();if(!silent||!document.activeElement||(!['item-search','log-search'].includes(document.activeElement.id)&&!document.activeElement.dataset?.priceSearch)){render()}}catch(e){if(/membership is inactive|do not have access/i.test(e.message)){state.roomId=null;localStorage.removeItem('rfm_room_id');state.section='storage';closeModal();render();toast('Your RFM access has been revoked.',true);return;}throw e;}}
 async function executeChange(action,item,from,to,qty,description=''){if(state.mode==='local')demoChange(action,item,from,to,qty,description);else await rpc('change_stock',{p_room:state.roomId,p_action:action,p_item:item,p_from:from||null,p_to:to||null,p_quantity:qty,...(description?{p_blueprint_description:description}:{})});if(state.mode==='cloud')await refreshCloud();else render()}
 async function getExport(){
  if(!isAdmin())throw Error('Only admins can download backups');
@@ -720,6 +749,8 @@ function bind(){
  if(a==='reload-ranks'){try{await loadRanks()}catch{}render();return}
  if(a==='rank-edit'){editRankModal(el.dataset.key);return}
  if(a==='rank-assign'){assignRankModal(el.dataset.user);return}
+ if(a==='price-sort'){if(!['name','quality','rolls'].includes(el.dataset.key))return;const v=priceView(el.dataset.vendor);v.direction=v.sort===el.dataset.key?-v.direction:1;v.sort=el.dataset.key;render();return}
+ if(a==='price-filter-reset'){delete state.priceViews[el.dataset.vendor];render();return}
  if(a==='reload-prices'){try{await loadPrices()}catch{}render();return}
  if(a==='price-edit'){priceEditModal(el.dataset.kind,el.dataset.id,el.dataset.vendor);return}
  if(a==='price-delete'){await deletePrice(el.dataset.kind,el.dataset.id);return}
@@ -755,6 +786,7 @@ function bind(){
  }catch(err){toast(err.message||'Something went wrong',true)}
  });
  document.addEventListener('change',e=>{
+ if(e.target.dataset?.priceQuality){priceView(e.target.dataset.priceQuality).quality=e.target.value;render();return}
  if(e.target.id==='family-rank-select'){$('#family-promotion-select').innerHTML=rankPromotionOptions(e.target.value);return}
   if(e.target.dataset.configuredOption){const fields=e.target.closest('[data-option-kind]').querySelector('[data-option-fields]');if(fields){fields.hidden=!(isAdmin()&&e.target.selectedOptions[0]?.dataset.createOption);if(!fields.hidden)fields.querySelector('input').focus();}return;}
   if(e.target.name==='category'&&e.target.closest('#item-form')){const fields=$('#new-category-fields');if(fields){fields.hidden=!(isAdmin()&&e.target.selectedOptions[0]?.dataset.createCategory);if(!fields.hidden)$('#new-category-name').focus();}return;}
@@ -767,7 +799,7 @@ function bind(){
     previewImage(window._rfmPreviewURL);
   }
  });
- document.addEventListener('input',e=>{if(e.target.id==='item-search'){state.search=e.target.value;const list=$('#catalog-items');if(list)list.innerHTML=renderCatalog()}if(e.target.id==='log-search'){const val=e.target.value;state.logSearch=val;const sel=e.target.selectionStart;render();let inp=$('#log-search');if(inp){inp.focus();inp.setSelectionRange(sel,sel)}}});
+ document.addEventListener('input',e=>{if(e.target.dataset?.priceSearch){updatePriceSearch(e.target);return}if(e.target.id==='item-search'){state.search=e.target.value;const list=$('#catalog-items');if(list)list.innerHTML=renderCatalog()}if(e.target.id==='log-search'){const val=e.target.value;state.logSearch=val;const sel=e.target.selectionStart;render();let inp=$('#log-search');if(inp){inp.focus();inp.setSelectionRange(sel,sel)}}});
  document.addEventListener('submit',async e=>{if(!['rank-form','rank-assignment-form','price-form','logo-form','quantity-form','item-form','entity-form','storage-form','storage-group-form','connect-form','profile-form','join-room-form','invite-form'].includes(e.target.dataset.form||e.target.id))return;e.preventDefault();const f=e.target,v=new FormData(f);if(state.busy)return;state.busy=true;f.querySelector('button[type=submit]')?.setAttribute('disabled','');
  try{
 
