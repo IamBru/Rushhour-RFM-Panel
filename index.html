@@ -137,7 +137,7 @@
     @container panel-layout (max-width:340px){.brand{gap:10px}.brand .mark{width:88px;height:88px}.brand h1{font-size:26px}}
     .rank-order-row,.rank-member{display:flex;align-items:center;justify-content:space-between;gap:10px}
     .rank-order-row>span,.rank-member>div{min-width:0;overflow-wrap:anywhere}
-    .rank-roster{margin-top:20px}.rank-member{padding:12px 0;border-bottom:1px solid var(--stroke)}
+    .rank-roster{margin:20px auto 0;max-width:680px;padding:16px}.rank-roster h3{margin-bottom:6px}.rank-roster .btn{padding:7px 10px;font-size:12px}.rank-member{padding:7px 0;font-size:13px;border-bottom:1px solid var(--stroke)}
     .rank-member strong{font-family:"Saira",sans-serif;font-style:normal;text-transform:none}
     .rank-pair>.rank-card{flex-direction:column;justify-self:stretch}.modal textarea{resize:vertical}
     .price-filters{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:0 18px 16px}
@@ -296,7 +296,7 @@ function renderContent(){
      <div class="catalog-items" id="catalog-items" data-scroll-key="catalog">${renderCatalog()}</div>
    </aside>
    <div class="storage-toolbar">
-     <div class="board-head"><h2 class="title">Storages</h2><button class="btn soft" data-action="new-storage-group">+ New storage group</button></div>
+     <div class="board-head"><h2 class="title">Storages</h2>${isAdmin()?'<button class="btn soft" data-action="new-storage-group">+ New storage group</button>':''}</div>
      <div class="guide">Drag items between storages. Drop outside any storage to remove. On mobile, tap + / &minus;.</div>
    </div>
    <section class="storage-content">${renderStorageGroups()}</section>
@@ -583,6 +583,7 @@ async function deleteEntity(kind,id){
  }finally{state.busy=false}
 }
 function newStorageGroupModal(){
+ if(!isAdmin())throw Error('Only admins can create storage groups');
  if(state.mode==='cloud'&&!Array.isArray(state.data.storage_groups))throw Error('The storage groups database update must be applied first');
  setModal(`<h2>New storage group</h2><p>Organize storages under a group. Items go inside the storages.</p><form id="storage-group-form"><label class="field-label">Group name</label><input class="field" name="name" maxlength="80" placeholder="e.g. Headquarters" required>${modalActions('Create storage group')}</form>`);
 }
@@ -837,6 +838,7 @@ function bind(){
  }
  if(f.id==='entity-form'){await saveEntity(v);}
  if(f.id==='storage-group-form'){
+ if(!isAdmin())throw Error('Only admins can create storage groups');
   const name=v.get('name').trim();if(!name||name.length>80)throw Error('Enter a group name (1-80 characters)');
   if(state.mode==='local'){normalizeLocalStorageGroups();state.data.storage_groups.push({id:uid(),name});logEntry('storage_group_created','','',name);localSave();render()}
   else{await rpc('add_storage_group',{p_room:state.roomId,p_name:name});await refreshCloud()}

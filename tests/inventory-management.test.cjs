@@ -413,3 +413,12 @@ test('rank box shows escaped member names while Members list omits rank labels',
  const html=f.run('renderRanks()');assert.match(html,/class="rank-person">&lt;Member&gt;/);
  const roster=html.slice(html.indexOf('rank-roster'));assert.match(roster,/<h3>Members<\/h3>/);assert.doesNotMatch(roster,/Unassigned|Assign rank|>Boss</);
 });
+
+
+test('storage group creation controls and editor require admin',()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';state.data.viewer={role:'member'};renderContent()");
+ assert.doesNotMatch(f.nodes['#app'].innerHTML,/data-action="new-storage-group"/);
+ assert.throws(()=>f.run('newStorageGroupModal()'),/Only admins/);
+ f.run("state.data.viewer.role='admin';renderContent()");assert.match(f.nodes['#app'].innerHTML,/data-action="new-storage-group"/);
+ f.run('newStorageGroupModal()');assert.match(f.nodes['#modal-root'].innerHTML,/storage-group-form/);
+});

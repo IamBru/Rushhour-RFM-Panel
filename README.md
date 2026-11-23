@@ -229,3 +229,8 @@ The migration enables RLS and revokes direct browser table access. Its read RPC 
 Apply `supabase/migrations/202611220011_vendor_colors_profiles_storage_access.sql` after 001-010 before deploying the frontend. Existing qualities retain a neutral white color; new qualities offer white, green, blue, purple, gold or red. Creation and color selection are admin-only. Storage creation is now admin-only, including the legacy API overload; storage-group creation remains available to active members. Any active member can rename their own profile without changing permissions or historical activity attribution. The new profile RPC takes no target-user parameter.
 
 The Ranks tab shows assigned names inside the corresponding rank boxes. The Members list shows names with assignment controls visible only to admins. Nested scrolling stays contained, including vendor tables, activity lists and dialogs.
+
+
+### Admin-only storage-group creation (migration 012)
+
+Apply `supabase/migrations/202611220012_admin_storage_group_creation.sql` after 001-011 before deploying. Only active admins can create storage groups, superseding the earlier member permission. Existing groups, storages and quantities are unchanged. Members retain inventory quantity controls.

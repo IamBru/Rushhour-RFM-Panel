@@ -45,7 +45,7 @@ For every privilege-sensitive change, verify both frontend visibility **and** ba
 
 ## Storage data model and audit behavior
 
-- Storage groups organize storage locations within the existing RFM group; they are not membership groups. A storage group contains storages only, and items/quantities belong to individual storages. Active members and admins may create storage groups. Only admins may create storages; enforce this in the UI and both storage-creation RPC overloads.
+- Storage groups organize storage locations within the existing RFM group; they are not membership groups. A storage group contains storages only, and items/quantities belong to individual storages. Only admins may create storage groups and storages; enforce this in the UI, the storage-group creation RPC and both storage-creation RPC overloads.
 - Preserve existing storage IDs and quantities when introducing storage groups. Place legacy storages in the Main storage group; do not recreate or reseed them.
 - The **master item catalog** is independent of stock. Creating an item type (e.g., AK-47) must not automatically add it to any storage.
 - Storage quantities are per item and per storage location. Adding, moving, or removing quantity must not delete its master catalog entry when stock reaches zero.
