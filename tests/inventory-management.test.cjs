@@ -422,3 +422,13 @@ test('storage group creation controls and editor require admin',()=>{
  f.run("state.data.viewer.role='admin';renderContent()");assert.match(f.nodes['#app'].innerHTML,/data-action="new-storage-group"/);
  f.run('newStorageGroupModal()');assert.match(f.nodes['#modal-root'].innerHTML,/storage-group-form/);
 });
+
+
+test('crew rank boxes show one distinct member each without hiding assignments beyond three',async()=>{
+ const f=await ranksFixture();f.run("state.rankBoard.members=Array.from({length:4},(_,i)=>({user_id:'capo-'+i,name:'Capo Person '+i,rank_key:'caporegime'})).concat([{user_id:'lt',name:'Lieutenant Person',rank_key:'lieutenant'}])");
+ const html=f.run('renderRanks()'),chart=html.slice(html.indexOf('class="rank-crews"'),html.indexOf('rank-roster'));
+ for(let i=0;i<4;i++)assert.equal(chart.split('Capo Person '+i).length-1,1);
+ assert.equal(chart.split('Lieutenant Person').length-1,1);
+ const cards=chart.match(/<div class="rank-card">[\s\S]*?<\/strong>[\s\S]*?<\/div><\/div>/g)||[];
+ for(const card of cards)assert.ok((card.match(/class="rank-person"/g)||[]).length<=1);
+});
