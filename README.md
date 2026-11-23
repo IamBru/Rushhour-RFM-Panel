@@ -222,3 +222,10 @@ Run `supabase/migrations/202611220010_rank_management.sql` in the existing Supab
 In Ranks, admins use the settings icon beside a rank to edit its name and subtitle. Lieutenant and Soldier also support one silent promotion per line. Use **Assign rank** beside an active member to select a family rank and optional promotion; choose **Unassigned** to clear it. Reassign members before removing a promotion they use. Renaming a rank preserves assignments. All active members see the shared roster; revoked members are excluded. Concurrent rank edits require reopening a stale editor instead of overwriting newer changes.
 
 The migration enables RLS and revokes direct browser table access. Its read RPC requires active membership and its write RPCs require an active admin; assignment writes never update `rfm_members.role`. Changes retain actor attribution in `rfm_rank_activity`. Apply and verify these permissions on Supabase before relying on them in production; the local Node tests do not execute PostgreSQL policies.
+
+
+### Vendor colors, profiles and storage access (migration 011)
+
+Apply `supabase/migrations/202611220011_vendor_colors_profiles_storage_access.sql` after 001-010 before deploying the frontend. Existing qualities retain a neutral white color; new qualities offer white, green, blue, purple, gold or red. Creation and color selection are admin-only. Storage creation is now admin-only, including the legacy API overload; storage-group creation remains available to active members. Any active member can rename their own profile without changing permissions or historical activity attribution. The new profile RPC takes no target-user parameter.
+
+The Ranks tab shows assigned names inside the corresponding rank boxes. The Members list shows names with assignment controls visible only to admins. Nested scrolling stays contained, including vendor tables, activity lists and dialogs.

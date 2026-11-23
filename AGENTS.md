@@ -45,7 +45,7 @@ For every privilege-sensitive change, verify both frontend visibility **and** ba
 
 ## Storage data model and audit behavior
 
-- Storage groups organize storage locations within the existing RFM group; they are not membership groups. A storage group contains storages only, and items/quantities belong to individual storages. Active members and admins may create storage groups and storages.
+- Storage groups organize storage locations within the existing RFM group; they are not membership groups. A storage group contains storages only, and items/quantities belong to individual storages. Active members and admins may create storage groups. Only admins may create storages; enforce this in the UI and both storage-creation RPC overloads.
 - Preserve existing storage IDs and quantities when introducing storage groups. Place legacy storages in the Main storage group; do not recreate or reseed them.
 - The **master item catalog** is independent of stock. Creating an item type (e.g., AK-47) must not automatically add it to any storage.
 - Storage quantities are per item and per storage location. Adding, moving, or removing quantity must not delete its master catalog entry when stock reaches zero.
@@ -98,3 +98,6 @@ Treat these as durable project requirements. Update `AGENTS.md` when a lasting, 
 - Only admins may drag storage headers between storage groups. Moving a storage preserves its ID and all stock variants, requires backend admin authorization, and adds an attributed activity entry.
 
 - Ranks is a shared family hierarchy reference. Active members may view rank names, silent promotions and active-member assignments. Only admins may edit them via authorized RPCs. Family assignments never alter panel membership roles or stock. Keep rank audit records separate from Storage history and preserve stable rank keys when renaming labels.
+
+- Nested scroll areas must contain overscroll so reaching either end never scrolls the page behind them. Apply this to future scrollable lists, tables and dialogs.
+- Active members may rename only their own display name, retaining membership ID and panel roles. Preserve historical actor names. Vendor rarity colors use an admin-only preset palette and stay separate from catalog categories.

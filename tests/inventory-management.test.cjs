@@ -385,3 +385,31 @@ test('vendor header toggles sorting, filters survive new data, and reset affects
  await f.events.click({target:{closest:()=>({dataset:{action:'price-filter-reset',vendor:'a'}})}});
  assert.equal(f.run("priceView('a').search"),'');assert.equal(f.run("priceView('a').sort"),'name');assert.equal(f.run("priceView('b').quality"),'Rare');
 });
+
+
+test('storage creation is admin-only while stock controls remain available',()=>{
+ const f=fixture();f.run("state.mode='cloud';state.data.viewer={role:'member'}");
+ assert.doesNotMatch(f.run('renderStorageGroups()'),/data-action="new-storage"/);
+ assert.throws(()=>f.run("newStorageModal('local-main')"),/Only admins/);
+ assert.match(f.run('renderStorage(state.data.storages[0])'),/data-action="add-one"/);
+ f.run("state.data.viewer.role='admin'");assert.match(f.run('renderStorageGroups()'),/data-action="new-storage"/);
+});
+test('profile rename uses self-only RPC, preserves draft on failure and validates names',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';state.data.viewer={role:'member',name:'Before',user_id:'one'};profileModal()");
+ assert.match(f.nodes['#modal-root'].innerHTML,/profile-form/);assert.doesNotMatch(f.nodes['#modal-root'].innerHTML,/readonly/);
+ f.ctx.rename=async(name,args)=>{assert.equal(name,'update_own_name');assert.deepEqual(Object.keys(args).sort(),['p_name','p_room']);assert.equal(args.p_name,'After');throw Error('inactive')};f.run('rpc=rename');
+ await assert.rejects(f.run("saveProfileName('After')"),/inactive/);assert.match(f.nodes['#modal-root'].innerHTML,/profile-form/);assert.equal(f.run('state.data.viewer.name'),'Before');
+ await assert.rejects(f.run("saveProfileName('   ')"),/Enter a name/);
+ f.ctx.rename=async()=>true;f.run("rpc=rename;refreshCloud=async()=>{state.data.viewer.name='After'}");await f.run("saveProfileName(' After ')");assert.equal(f.run('state.name'),'After');assert.equal(f.run('state.data.viewer.user_id'),'one');assert.equal(f.run('state.data.viewer.role'),'member');
+});
+test('vendor rarity colors use safe presets and color chooser is admin-only',()=>{
+ const f=fixture();f.run("state.priceBoard={vendors:[{id:'v',name:'Vendor'}],entries:[{id:'e',vendor_id:'v',name:'Item',quality:'Epic',rolls:'10'}],qualities:['Epic'],quality_colors:{Epic:'#c084fc'}}");
+ assert.match(f.run('renderPrices()'),/color:#c084fc/);assert.match(f.run("configuredOptionField('quality','quality')"),/data-quality-color/);
+ f.run("state.priceBoard.quality_colors.Epic='red;position:fixed'");assert.equal(f.run("rarityColor('Epic')"),'#e5e7eb');
+ f.run("state.mode='cloud';state.data.viewer={role:'member'}");assert.doesNotMatch(f.run("configuredOptionField('quality','quality')"),/data-quality-color/);
+});
+test('rank box shows escaped member names while Members list omits rank labels',async()=>{
+ const f=await ranksFixture();f.run("state.rankBoard.members[0].rank_key='boss';state.rankBoard.members[0].name='<Member>';state.mode='cloud';state.data.viewer={role:'member'}");
+ const html=f.run('renderRanks()');assert.match(html,/class="rank-person">&lt;Member&gt;/);
+ const roster=html.slice(html.indexOf('rank-roster'));assert.match(roster,/<h3>Members<\/h3>/);assert.doesNotMatch(roster,/Unassigned|Assign rank|>Boss</);
+});
