@@ -429,6 +429,27 @@ test('crew rank boxes show one distinct member each without hiding assignments b
  const html=f.run('renderRanks()'),chart=html.slice(html.indexOf('class="rank-crews"'),html.indexOf('rank-roster'));
  for(let i=0;i<4;i++)assert.equal(chart.split('Capo Person '+i).length-1,1);
  assert.equal(chart.split('Lieutenant Person').length-1,1);
- const cards=chart.match(/<div class="rank-card">[\s\S]*?<\/strong>[\s\S]*?<\/div><\/div>/g)||[];
+ const cards=chart.match(/<div class="rank-card" data-rank-node="(?:caporegime|lieutenant)-[^"]+">[\s\S]*?<\/strong>[\s\S]*?<\/div><\/div>/g)||[];
+ assert.equal(cards.length,8);
  for(const card of cards)assert.ok((card.match(/class="rank-person"/g)||[]).length<=1);
+});
+
+
+test('rank chart removes dotted boxes but preserves assigned promotions and explicit branches',async()=>{
+ const f=await ranksFixture();f.run("state.rankBoard.members=[{user_id:'one',name:'Person',rank_key:'lieutenant',promotion:'Coordinator'}]");
+ const markup=f.run('renderRanks()');assert.doesNotMatch(markup,/rank-sub|Dashed boxes/);
+ assert.match(markup,/Person<small>Coordinator<\/small>/);assert.match(markup,/Small text below a member/);
+ const ids=[...markup.matchAll(/data-rank-node="([^"]+)"/g)].map(m=>m[1]);f.ctx.nodeIds=ids;
+ const links=JSON.parse(f.run('JSON.stringify(rankConnections(nodeIds))'));
+ assert(links.some(([a,b])=>a==='underboss'&&b==='crew_chief'));
+ assert(!links.some(([a,b])=>a==='consigliere'&&b==='crew_chief'));
+ for(let i=0;i<3;i++)for(const pair of [['crew_chief','caporegime-'+i],['caporegime-'+i,'lieutenant-'+i],['lieutenant-'+i,'soldier']])assert(links.some(([a,b])=>a===pair[0]&&b===pair[1]));
+});
+
+test('rank connectors terminate at measured card edges after layout changes',()=>{
+ const f=fixture(),svg={setAttribute(){},innerHTML:''};
+ const boxes={soldier:{left:30,right:90,top:20,bottom:110},associate:{left:50,right:110,top:138,bottom:200}};
+ const chart={getBoundingClientRect:()=>({left:10,top:10,width:200,height:250}),querySelector:()=>svg,querySelectorAll:()=>Object.entries(boxes).map(([id,rect])=>({dataset:{rankNode:id},getBoundingClientRect:()=>rect}))};
+ f.ctx.chart=chart;f.run('drawRankLinks(chart)');assert.match(svg.innerHTML,/M50 100V114H70V128/);
+ boxes.soldier.bottom=130;boxes.associate.top=158;f.run('drawRankLinks(chart)');assert.match(svg.innerHTML,/M50 120V134H70V148/);
 });

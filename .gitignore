@@ -1,0 +1,10 @@
+# Python tooling
+__pycache__/
+*.py[cod]
+
+# Owner recovery material must stay outside the repository
+*.dump
+*.age
+rfm-recovery-key*.txt
+rfm-backup/
+recovery.tar.gz

@@ -234,3 +234,12 @@ The Ranks tab shows assigned names inside the corresponding rank boxes. The Memb
 ### Admin-only storage-group creation (migration 012)
 
 Apply `supabase/migrations/202611220012_admin_storage_group_creation.sql` after 001-011 before deploying. Only active admins can create storage groups, superseding the earlier member permission. Existing groups, storages and quantities are unchanged. Members retain inventory quantity controls.
+
+## Owner-only recovery backups
+
+An opt-in GitHub Actions workflow prepares encrypted recovery points every six
+hours, including application database schemas/data and actual Storage files.
+It is **not active until the owner configures and enables it**. Follow
+[owner setup and recovery instructions](docs/owner-recovery.md), including the
+first restore drill. No SQL migration or panel permissions change is needed.
+The existing browser Backup button remains an inventory-only export.
