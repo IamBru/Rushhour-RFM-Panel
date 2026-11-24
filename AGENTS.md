@@ -99,7 +99,7 @@ Treat these as durable project requirements. Update `AGENTS.md` when a lasting, 
 
 - Ranks is a shared family hierarchy reference. Active members may view rank names, silent promotions and active-member assignments. Only admins may edit them via authorized RPCs. Family assignments never alter panel membership roles or stock. Keep rank audit records separate from Storage history and preserve stable rank keys when renaming labels.
 
-- Nested scroll areas must contain overscroll so reaching either end never scrolls the page behind them. Apply this to future scrollable lists, tables and dialogs.
+- Nested scroll areas must contain overscroll so reaching either end never scrolls the page behind them. Apply this to future scrollable lists, tables and dialogs. The rank chart scrolls horizontally only: contain horizontal overscroll, but allow vertical wheel/touch scrolling to reach the page while hovering the chart.
 - Active members may rename only their own display name, retaining membership ID and panel roles. Preserve historical actor names. Vendor rarity colors use an admin-only preset palette and stay separate from catalog categories.
 - Recovery is owner-only outside the panel. Keep automatic backup credentials in owner-controlled server/CI secrets, keep the private decryption key out of CI and the repo, and include actual Storage files as well as database data. Do not expose restore RPCs/buttons to panel admins or automatically apply a restore to production.
 

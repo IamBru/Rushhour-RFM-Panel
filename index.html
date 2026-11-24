@@ -111,7 +111,7 @@
     .ranks-layout{display:grid;grid-template-columns:minmax(200px,1fr) minmax(0,2.4fr) minmax(220px,1fr);gap:18px;align-items:start}
     .ranks-info{padding:20px}.ranks-info h3{color:var(--accent2);margin:0 0 12px}.ranks-info h4{padding:8px;background:#7f51e229;margin:20px 0 8px;border-left:3px solid var(--accent)}
     .ranks-info ol,.ranks-info ul{padding-left:22px;margin-bottom:24px}.ranks-info li{padding:6px 0;overflow-wrap:anywhere}
-    .rank-chart-scroll{overflow:auto;overscroll-behavior:contain;min-width:0}
+    .rank-chart-scroll[data-scroll-key]{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;overscroll-behavior-y:auto;min-width:0}
     .rank-chart{position:relative;padding:24px 14px;display:flex;flex-direction:column;align-items:center;gap:28px;min-width:580px}
     .rank-links{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;color:var(--accent)}
     .rank-card{position:relative;z-index:1;border:2px solid var(--accent);border-radius:10px;background:#171327;padding:12px 10px;text-align:center;width:100%;max-width:260px;overflow-wrap:anywhere}
@@ -141,6 +141,7 @@
     .rank-order-row,.rank-member{display:flex;align-items:center;justify-content:space-between;gap:10px}
     .rank-order-row>span,.rank-member>div{min-width:0;overflow-wrap:anywhere}
     .rank-roster{margin:16px auto 0;width:100%;max-width:440px;padding:12px 14px}.rank-roster .rank-member{gap:8px;align-items:flex-start}.rank-roster .rank-member>div{flex:1}.rank-roster .rank-member>.btn{flex-shrink:0}.rank-roster h3{margin-bottom:6px}.rank-roster .btn{padding:7px 10px;font-size:12px}.rank-member{padding:7px 0;font-size:13px;border-bottom:1px solid var(--stroke)}
+    .rank-roster .rank-member:last-child{border-bottom:0}
     .rank-member strong{font-family:"Saira",sans-serif;font-style:normal;text-transform:none}
     .rank-pair>.rank-card{flex-direction:column;justify-self:stretch}.modal textarea{resize:vertical}
     .price-filters{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:0 18px 16px}
