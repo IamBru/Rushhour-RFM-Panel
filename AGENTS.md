@@ -102,3 +102,29 @@ Treat these as durable project requirements. Update `AGENTS.md` when a lasting, 
 - Nested scroll areas must contain overscroll so reaching either end never scrolls the page behind them. Apply this to future scrollable lists, tables and dialogs.
 - Active members may rename only their own display name, retaining membership ID and panel roles. Preserve historical actor names. Vendor rarity colors use an admin-only preset palette and stay separate from catalog categories.
 - Recovery is owner-only outside the panel. Keep automatic backup credentials in owner-controlled server/CI secrets, keep the private decryption key out of CI and the repo, and include actual Storage files as well as database data. Do not expose restore RPCs/buttons to panel admins or automatically apply a restore to production.
+
+
+## Supabase resource limits
+
+The owner supplied these project limits on 2026-11-24. Treat them as capacity
+constraints for future changes to this repository; verify current usage/plan
+before work that could materially increase consumption.
+
+| Resource | Supplied limit | Usage in the supplied screenshot |
+| --- | --- | --- |
+| Egress | 5 GB | 1.26 GB |
+| Database size | 500 MB | 29 MB |
+| Monthly active users | 50,000 | 0 |
+| File storage | 1 GB | 0.00 GB |
+| Log ingestion | 1 GB | 0.04 GB |
+| Log query | 100 GB | 69.5 GB |
+
+Usage figures are a historical screenshot, not live measurements. The screenshot
+does not specify reset periods for the other metered resources; do not assume them.
+Keep database growth, images, polling/refetching, logs and backup downloads within
+these limits. Repeated full database/photo backups consume egress, so account for
+their frequency and data size when changing backup behavior. Prefer bounded reads,
+compressed images and avoiding unnecessary transfers. Do not automatically upgrade
+the plan, delete production data/history, or weaken recovery/security to save quota.
+
+- Owner-requested backup retention: keep the latest uploaded backup on main and delete older artifacts from that same backup workflow only after a successful replacement upload. Failed backups must preserve previous artifacts. Never delete local backups, recovery keys or production data as part of this cleanup.

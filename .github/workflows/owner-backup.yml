@@ -13,6 +13,8 @@ jobs:
     if: vars.RFM_BACKUPS_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,6 +51,7 @@ jobs:
           BACKUP_OUTPUT_DIR: ${{ runner.temp }}/rfm-encrypted
         run: python scripts/owner_backup.py
       - name: Keep encrypted recovery point
+        id: upload
         uses: actions/upload-artifact@v4
         with:
           name: rfm-owner-backup-${{ github.run_id }}-${{ github.run_attempt }}
@@ -56,3 +59,23 @@ jobs:
           if-no-files-found: error
           retention-days: 90
           compression-level: 0
+
+  cleanup:
+    needs: backup
+    if: github.ref == 'refs/heads/main' && needs.backup.outputs.artifact_id != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Remove older backups after successful upload
+        uses: actions/github-script@v8
+        env:
+          NEW_BACKUP_ARTIFACT_ID: ${{ needs.backup.outputs.artifact_id }}
+        with:
+          script: |
+            const cleanup = require('./scripts/prune-backups.cjs');
+            await cleanup({github, context, core, artifactId: process.env.NEW_BACKUP_ARTIFACT_ID});

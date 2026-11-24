@@ -139,9 +139,19 @@ RPC and does not promise a one-click per-action undo.
 
 ## Retention and limits
 
-- Requested artifact retention is 90 days, subject to the repository's effective
-  retention/billing limits. Four complete backups per day can consume Actions
-  storage and Supabase egress; monitor usage before leaving the schedule enabled.
+- On main, a successful upload is followed by a separate cleanup job that verifies
+  the new artifact exists and removes older RFM backup artifacts from this workflow
+  on main. The newest artifact, other workflows, branch artifacts, run logs, locally
+  downloaded backups and the recovery key are not deleted. Failed backup/upload
+  jobs never run cleanup. Cleanup failures retain the new backup and may leave old
+  copies until the next successful run. Only the cleanup job has Actions write
+  permission; it receives no database or S3 secrets.
+- The newest artifact still has a maximum requested lifetime of 90 days (subject
+  to repository limits) if no new successful run replaces it. Keep an independent
+  downloaded copy. Keeping only the latest cloud backup means a run after damage
+  may remove the last pre-incident recovery point; there is no rolling history.
+- Removing old GitHub artifacts saves GitHub Actions storage, not Supabase database
+  or file storage. It does not reduce the egress consumed by each new full backup.
 - Six-hour snapshots can lose up to six hours of work, or more if a run is late
   or fails. GitHub schedules are best-effort, not an exact recovery-time SLA.
 - Public-repository scheduled workflows can be disabled after 60 days without
