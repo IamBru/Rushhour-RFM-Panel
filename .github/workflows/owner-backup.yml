@@ -23,7 +23,19 @@ jobs:
       - name: Install backup tools
         run: |
           sudo apt-get update -qq
+          sudo apt-get install -y curl ca-certificates
+          # Ubuntu 24.04's default repositories do not provide PostgreSQL 17.
+          # Add the official PostgreSQL repository, scoped to its signing key.
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error --location \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main' | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
           sudo apt-get install -y age postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          /usr/lib/postgresql/17/bin/pg_restore --version
+          age --version
           python -m pip install -r scripts/backup-requirements.txt
           echo '/usr/lib/postgresql/17/bin' >> "$GITHUB_PATH"
       - name: Back up and encrypt
