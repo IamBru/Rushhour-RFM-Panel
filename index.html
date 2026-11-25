@@ -182,6 +182,7 @@ function localSave(){localStorage.setItem('rfm_local',JSON.stringify(state.data)
 function toast(msg,error=false){const el=$('#toast-root');el.innerHTML=`<div class="toast ${error?'error':''}">${esc(msg)}</div>`;clearTimeout(window._toastTimeout);window._toastTimeout=setTimeout(()=>el.innerHTML='',3200)}
 function icon(cat){return cat==='Shotguns'?'◈':cat==='Pistols'?'◇':'▦'}
 const PHOTO_BUCKET = 'rfm-item-images';
+const SYNC_INTERVAL_MS = 30000;
 function imageUrl(item){
  if(item?.image_data && typeof item.image_data==='string' && /^data:image\/(webp|jpeg|png);base64,/.test(item.image_data)) return item.image_data;
  if(state.mode==='cloud' && item?.image_path && state.client) return state.client.storage.from(PHOTO_BUCKET).getPublicUrl(item.image_path).data.publicUrl;
@@ -454,7 +455,7 @@ async function deletePrice(kind,id){
  await loadPrices();render();toast('Deleted');}finally{state.busy=false}
 }
 function renderHeader(showActions){return `<header class="top"><div class="brand"><div class="mark${state.data?.room?.logo_data?' custom-logo':''}">${state.data?.room?.logo_data?`<img src="${esc(state.data.room.logo_data)}" alt="RFM logo">`:'RFM'}</div><div><h1>RFM Panel</h1></div></div>
- <div class="top-actions"><span class="pill"><i class="dot ${state.mode==='local'?'local':''}"></i>${state.mode==='cloud'?'RFM connected · syncs every 5s':'Local demo'}</span>
+ <div class="top-actions"><span class="pill"><i class="dot ${state.mode==='local'?'local':''}"></i>${state.mode==='cloud'?`RFM connected · syncs every ${SYNC_INTERVAL_MS/1000}s while visible`:'Local demo'}</span>
  ${showActions?`<button class="btn ghost" data-action="profile">👤 ${esc(currentName())}</button>${isAdmin()?'<button class="btn ghost" data-action="export">↓ Backup</button>':''}<button class="btn ghost" data-action="share">&#9881; Settings</button>`:(location.hostname.endsWith('.github.io')?'':'<button class="btn ghost" data-action="configure">⚙ Settings</button>')}</div></header>`}
 function renderFooter(){if(state.section==='ranks')return '<footer>RFM ? Ricardo Mafia Family ? Rank hierarchy</footer>';if(state.section==='prices')return '<footer>RFM Panel ? Item Prices ? Vendor sale reference</footer>';return `<footer>RFM Panel · Item pictures · Drag-and-drop inventory · Every change is logged ${state.mode==='cloud'?'in the shared database':'in this browser'}.</footer>`}
 function actionIcon(kind){return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${kind==='delete'?'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>':'<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>'}</svg>`}
@@ -776,7 +777,7 @@ async function connectCloud(url,key){if(!window.supabase)throw Error('Cloud libr
  }
  if(!state.roomId)render();
  window.clearInterval(window._syncInterval);
- window._syncInterval=setInterval(autoRefresh,30000);
+ window._syncInterval=setInterval(autoRefresh,SYNC_INTERVAL_MS);
 }
 let cloudRefreshPromise=null,snapshotRoom=null,snapshotRevision=null;
 const ACTIVITY_PAGE_SIZE=50;
