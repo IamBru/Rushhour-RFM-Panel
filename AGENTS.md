@@ -128,3 +128,5 @@ compressed images and avoiding unnecessary transfers. Do not automatically upgra
 the plan, delete production data/history, or weaken recovery/security to save quota.
 
 - Owner-requested backup retention: keep the latest uploaded backup on main and delete older artifacts from that same backup workflow only after a successful replacement upload. Failed backups must preserve previous artifacts. Never delete local backups, recovery keys or production data as part of this cleanup.
+
+- Egress controls: backups run once daily at 06:23 UTC; retain the latest-successful-upload cleanup policy. Frontend automatic refresh is visible-tab-only at 30 seconds, with immediate refresh after own mutations. Use authorized conditional snapshots; load activity only on its tab in bounded pages, preserving loaded history/scroll. Keep new item photos compressed and cached at unique replacement URLs.

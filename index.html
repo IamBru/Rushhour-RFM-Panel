@@ -189,10 +189,10 @@ function imageUrl(item){
 }
 function itemThumb(item,small=false){
  const url=imageUrl(item),klass=small?'stock-photo':'avatar';
- return `<span class="${klass}${url?' photo':''}">${url?`<img src="${esc(url)}" alt="" loading="lazy">`:icon(item.category)}</span>`;
+ return `<span class="${klass}${url?' photo':''}">${url?`<img src="${esc(url)}" alt="" loading="lazy" decoding="async">`:icon(item.category)}</span>`;
 }
 function previewImage(url){const e=$('#image-preview');if(e)e.innerHTML=url?`<img alt="Selected item image preview" src="${esc(url)}">`:'No image selected';}
-async function compressPhoto(file,maxDimension=540,preserveAlpha=false){
+async function compressPhoto(file,maxDimension=360,preserveAlpha=false){
  if(!file || !['image/jpeg','image/png','image/webp'].includes(file.type)) throw Error('Choose a JPG, PNG or WebP image');
  if(file.size>12*1024*1024)throw Error('Image is too large (12 MB maximum before compression)');
  const temp=URL.createObjectURL(file);
@@ -226,7 +226,7 @@ async function saveImage(itemId,file){
  let path=null;
  if(compressed){
   path=`${state.roomId}/${itemId}/${uid()}.${compressed.extension}`;
-  const {error}=await state.client.storage.from(PHOTO_BUCKET).upload(path,compressed.blob,{contentType:compressed.blob.type,upsert:false});
+  const {error}=await state.client.storage.from(PHOTO_BUCKET).upload(path,compressed.blob,{contentType:compressed.blob.type,cacheControl:'31536000',upsert:false});
   if(error)throw new Error('Upload failed: '+error.message);
  }
  try{await rpc('set_item_image',{p_room:state.roomId,p_item:itemId,p_path:path});}
@@ -287,7 +287,7 @@ function renderContent(){
    <div class="stat"><div class="stat-label">Total items in storage</div><div class="stat-value">${t.toLocaleString()}</div><div class="stat-desc">Across every location</div></div>
    <div class="stat"><div class="stat-label">Storage locations</div><div class="stat-value">${d.storages.length}</div><div class="stat-desc">Drag to move between them</div></div>
    <div class="stat"><div class="stat-label">Item types</div><div class="stat-value">${d.items.length}</div><div class="stat-desc">${populated} occupied item slots</div></div>
-   ${isAdmin()?`<div class="stat"><div class="stat-label">Changes recorded</div><div class="stat-value">${d.logs.length}${state.mode==='cloud'&&d.logs.length===150?'+':''}</div><div class="stat-desc">Admin-only activity history</div></div>`:`<div class="stat"><div class="stat-label">Your access</div><div class="stat-value" style="font-size:20px">Member</div><div class="stat-desc">Inventory access enabled</div></div>`}
+   ${isAdmin()?`<div class="stat"><div class="stat-label">Activity history</div><div class="stat-value">Admin</div><div class="stat-desc">Open Activity Logs to view changes</div></div>`:`<div class="stat"><div class="stat-label">Your access</div><div class="stat-value" style="font-size:20px">Member</div><div class="stat-desc">Inventory access enabled</div></div>`}
  </div>
  <div class="dashboard">
    <aside class="panel catalog">
@@ -529,7 +529,7 @@ function deletionDescription(l){
  return `deleted ${esc(kind)} <strong>${esc(name||kind)}</strong>${affected.length?`<div class="help">${affected.map(x=>`${esc(x.before??x.quantity)} &times; ${esc(x.item||'item')} from ${esc(x.storage||'storage')}`).join('<br>')}</div>`:'<div class="help">No stock to remove.</div>'}`;
 }
 function activityDescription(l){if(['item_deleted','storage_deleted','storage_group_deleted'].includes(l.action))return deletionDescription(l);const name=esc(l.item_name),q=esc(l.quantity);switch(l.action){case 'storage_moved':return `moved storage <strong>${name}</strong> from <strong>${esc(l.from_name)}</strong> to <strong>${esc(l.to_name)}</strong> with all its items`;case 'add':return `added <strong>${q} × ${name}</strong> to <strong>${esc(l.to_name)}</strong>`;case 'remove':return `removed <strong>${q} × ${name}</strong> from <strong>${esc(l.from_name)}</strong>`;case 'move':return `moved <strong>${q} × ${name}</strong> from <strong>${esc(l.from_name)}</strong> to <strong>${esc(l.to_name)}</strong>`;case 'image_updated':return `added or changed the photo for <strong>${name}</strong>`;case 'image_removed':return `removed the photo for <strong>${name}</strong>`;case 'item_created':return `created item <strong>${name}</strong>`;case 'storage_group_created':return `created storage group <strong>${esc(l.to_name)}</strong>`;case 'storage_created':return `created storage <strong>${esc(l.to_name)}</strong>`;case 'member_joined':return 'joined the group';case 'room_created':return 'created the group';default:return esc(l.detail||l.action)}}
-function renderActivity(){const arr=state.data.logs.filter(l=>(l.actor_name+' '+l.item_name+' '+l.from_name+' '+l.to_name+' '+l.action+' '+(l.detail||'')).toLowerCase().includes(state.logSearch.toLowerCase()));return `<section class="panel activity"><div class="activity-tools"><input class="search" style="flex:1;min-width:0" id="log-search" placeholder="Search by person, item or storage..." value="${esc(state.logSearch)}" aria-label="Search activity"></div><div class="activity-list" data-scroll-key="activity">${arr.length?arr.map(l=>`<div class="activity-row" data-scroll-anchor="log-${esc(l.id)}"><div class="bubble">${esc((l.actor_name||'?').slice(0,1).toUpperCase())}</div><div class="act-body"><div class="act-title"><strong>${esc(l.actor_name)}</strong> ${activityDescription(l)} ${['add','remove','move'].includes(l.action)?`<span class="act-symbol ${l.action==='add'?'plus':l.action==='remove'?'minus':'move'}">${l.action.toUpperCase()}</span>`:''}</div><div class="act-time">${dateText(l.created_at)}</div></div></div>`).join(''):'<div class="empty" style="margin:18px">No activity found.</div>'}</div>${state.mode==='cloud'&&state.data.logs.length>=150?`<div class="catalog-foot"><button class="btn full" data-action="load-older">Load older changes</button></div>`:''}</section>`}
+function renderActivity(){const arr=state.data.logs.filter(l=>(l.actor_name+' '+l.item_name+' '+l.from_name+' '+l.to_name+' '+l.action+' '+(l.detail||'')).toLowerCase().includes(state.logSearch.toLowerCase()));return `<section class="panel activity"><div class="activity-tools"><input class="search" style="flex:1;min-width:0" id="log-search" placeholder="Search by person, item or storage..." value="${esc(state.logSearch)}" aria-label="Search activity"></div><div class="activity-list" data-scroll-key="activity">${arr.length?arr.map(l=>`<div class="activity-row" data-scroll-anchor="log-${esc(l.id)}"><div class="bubble">${esc((l.actor_name||'?').slice(0,1).toUpperCase())}</div><div class="act-body"><div class="act-title"><strong>${esc(l.actor_name)}</strong> ${activityDescription(l)} ${['add','remove','move'].includes(l.action)?`<span class="act-symbol ${l.action==='add'?'plus':l.action==='remove'?'minus':'move'}">${l.action.toUpperCase()}</span>`:''}</div><div class="act-time">${dateText(l.created_at)}</div></div></div>`).join(''):'<div class="empty" style="margin:18px">No activity found.</div>'}</div>${state.mode==='cloud'&&state.data.logs.length>=ACTIVITY_PAGE_SIZE?`<div class="catalog-foot"><button class="btn full" data-action="load-older">Load older changes</button></div>`:''}</section>`}
 function renderGroupGate(){return `<div class="group-panel join-only">
  <div class="join-heading"><div class="join-emblem">RFM</div><div class="join-kicker">INVITE-ONLY ACCESS</div><h2>Join RFM</h2><p class="help">Welcome to the RFM Panel. Enter your personal invitation code to access the shared storage board.</p></div>
  <div class="join-card"><form id="join-room-form"><label class="field-label" for="rfm-join-name">Your display name</label><input class="field" id="rfm-join-name" name="display_name" maxlength="40" value="${esc(state.name)}" placeholder="e.g. Billy Jones" autocomplete="nickname" required>
@@ -776,17 +776,58 @@ async function connectCloud(url,key){if(!window.supabase)throw Error('Cloud libr
  }
  if(!state.roomId)render();
  window.clearInterval(window._syncInterval);
- window._syncInterval=setInterval(()=>{if(state.mode==='cloud'&&state.roomId&&!state.busy)refreshCloud(true).catch(()=>{})},5000);
+ window._syncInterval=setInterval(autoRefresh,30000);
 }
-async function refreshCloud(silent=false){if(!state.roomId)return;try{let data=await rpc('get_snapshot',{p_room:state.roomId});
- const previous=state.data?.logs||[];
- if(data.viewer?.role==='admin'&&previous.length>150&&data.logs.length>=150){
-  const newCount=data.logs.filter(x=>Number(x.id)>Number(previous[0]?.id||0)).length;
-  const target=previous.length+newCount,logs=[];
-  while(logs.length<target){const limit=Math.min(1000,target-logs.length);const batch=await rpc('get_activity',{p_room:state.roomId,p_limit:limit,p_offset:logs.length});logs.push(...batch);if(batch.length<limit)break;}
-  data.logs=logs;
+let cloudRefreshPromise=null,snapshotRoom=null,snapshotRevision=null;
+const ACTIVITY_PAGE_SIZE=50;
+function autoRefresh(){
+ if(document.hidden||state.mode!=='cloud'||!state.roomId||state.busy||cloudRefreshPromise)return;
+ return refreshCloud(true).catch(()=>{});
+}
+async function refreshActivity(){
+ if(!isAdmin()||state.section!=='activity')return;
+ const room=state.roomId,previous=state.data.logs||[];
+ const head=await rpc('get_activity',{p_room:room,p_limit:ACTIVITY_PAGE_SIZE,p_offset:0});
+ if(room!==state.roomId||!isAdmin())return;
+ if(JSON.stringify(head)===JSON.stringify(previous.slice(0,ACTIVITY_PAGE_SIZE)))return;
+ const newCount=head.filter(x=>Number(x.id)>Number(previous[0]?.id||0)).length;
+ const target=Math.max(ACTIVITY_PAGE_SIZE,previous.length+newCount),logs=[...head];
+ if(head.length===ACTIVITY_PAGE_SIZE){
+  while(logs.length<target){const limit=Math.min(ACTIVITY_PAGE_SIZE,target-logs.length);const batch=await rpc('get_activity',{p_room:room,p_limit:limit,p_offset:logs.length});logs.push(...batch);if(batch.length<limit)break;}
  }
- state.data=data;if(state.section==='ranks'){try{await loadRanks()}catch{}}if(state.section==='prices'){try{await loadPrices()}catch{}}state.name=data.viewer?.name||state.name;if(!isAdmin()&&state.section==='activity')state.section='storage';state.lastSync=Date.now();if(!silent||!document.activeElement||(!['item-search','log-search'].includes(document.activeElement.id)&&!document.activeElement.dataset?.priceSearch)){render()}}catch(e){if(/membership is inactive|do not have access/i.test(e.message)){state.roomId=null;localStorage.removeItem('rfm_room_id');state.section='storage';closeModal();render();toast('Your RFM access has been revoked.',true);return;}throw e;}}
+ if(room===state.roomId&&isAdmin())state.data.logs=logs;
+}
+async function refreshCloud(silent=false){
+ while(cloudRefreshPromise){await cloudRefreshPromise;if(silent)return;}
+ if(!state.roomId)return;
+ cloudRefreshPromise=refreshCloudData(silent);
+ try{await cloudRefreshPromise}finally{cloudRefreshPromise=null}
+}
+async function refreshCloudData(silent){
+ const room=state.roomId;
+ try{
+  const result=await rpc('get_panel_snapshot',{p_room:room,p_revision:snapshotRoom===room?snapshotRevision:null});
+  if(room!==state.roomId)return;
+  if(result.data){
+   const previous=snapshotRoom===room?state.data?.logs||[]:[];
+   state.data={...result.data,logs:result.data.viewer?.role==='admin'?previous:[]};
+  }
+  snapshotRoom=room;snapshotRevision=result.revision;
+  state.name=state.data.viewer?.name||state.name;
+  if(!isAdmin()&&state.section==='activity')state.section='storage';
+  if(state.section==='activity')await refreshActivity();
+  if(state.section==='ranks'){try{await loadRanks()}catch{}}
+  if(state.section==='prices'){try{await loadPrices()}catch{}}
+  state.lastSync=Date.now();
+  if(!silent||!document.activeElement||(!['item-search','log-search'].includes(document.activeElement.id)&&!document.activeElement.dataset?.priceSearch))render();
+ }catch(e){
+  if(/membership is inactive|do not have access/i.test(e.message)){
+   state.roomId=null;snapshotRoom=null;snapshotRevision=null;state.data=null;state.rankBoard=null;state.priceBoard=null;
+   localStorage.removeItem('rfm_room_id');state.section='storage';closeModal();render();toast('Your RFM access has been revoked.',true);return;
+  }
+  throw e;
+ }
+}
 async function executeChange(action,item,from,to,qty,description=''){if(state.mode==='local')demoChange(action,item,from,to,qty,description);else await rpc('change_stock',{p_room:state.roomId,p_action:action,p_item:item,p_from:from||null,p_to:to||null,p_quantity:qty,...(description?{p_blueprint_description:description}:{})});if(state.mode==='cloud')await refreshCloud();else render()}
 async function getExport(){
  if(!isAdmin())throw Error('Only admins can download backups');
@@ -801,6 +842,7 @@ async function exportLog(){if(!isAdmin())throw Error('Admin permission required'
  if(state.mode==='cloud'){logs=[];let page=0;while(true){let batch=await rpc('get_activity',{p_room:state.roomId,p_limit:1000,p_offset:page*1000});logs.push(...batch);page++;if(batch.length<1000)break;if(page>50)throw Error('Too many history rows; ask to export an archive')} }
  const cols=['created_at','actor_name','action','item_name','quantity','from_name','to_name','detail'];download([cols.map(csv).join(','),...logs.map(x=>cols.map(k=>csv(x[k])).join(','))].join('\r\n'),'RFM-activity-'+new Date().toISOString().slice(0,10)+'.csv','text/csv');toast('Activity CSV downloaded')}
 function bind(){
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)autoRefresh()});
  let backdropPress=null;
  document.addEventListener('pointerdown',e=>{backdropPress=e.button===0&&e.target.dataset?.action==='close-modal-overlay'?e.target:null});
  document.addEventListener('pointercancel',()=>{backdropPress=null});
@@ -808,7 +850,7 @@ function bind(){
  const pressedBackdrop=backdropPress;backdropPress=null;
  const el=e.target.closest('[data-action]');if(!el)return;const a=el.dataset.action;
  try{
- if(a==='section'){if(!['storage','prices','ranks','activity'].includes(el.dataset.section))return;if(el.dataset.section==='activity'&&!isAdmin())throw Error('Admin only');state.section=el.dataset.section;if(state.section==='ranks'){try{await loadRanks()}catch{}}if(state.section==='prices'){try{await loadPrices()}catch{}}render();return}
+ if(a==='section'){if(!['storage','prices','ranks','activity'].includes(el.dataset.section))return;if(el.dataset.section==='activity'&&!isAdmin())throw Error('Admin only');state.section=el.dataset.section;if(state.section==='activity'&&state.mode==='cloud'){await refreshCloud();return}if(state.section==='ranks'){try{await loadRanks()}catch{}}if(state.section==='prices'){try{await loadPrices()}catch{}}render();return}
  if(a==='reload-ranks'){try{await loadRanks()}catch{}render();return}
  if(a==='rank-edit'){editRankModal(el.dataset.key);return}
  if(a==='rank-assign'){assignRankModal(el.dataset.user);return}
@@ -845,7 +887,7 @@ function bind(){
  if(a==='move-one'){quantityModal({action:'move',itemId:el.dataset.item,fromId:el.dataset.storageId,blueprintDescription:el.dataset.blueprintDescription});return}
  if(a==='export'){download(await getExport(),'RFM-inventory-backup-'+new Date().toISOString().slice(0,10)+'.json','application/json');toast('Backup downloaded');return}
  if(a==='export-log'){if(!isAdmin())throw Error('Admin only');await exportLog();return}
- if(a==='load-older'){if(!isAdmin())throw Error('Admin only');const batch=await rpc('get_activity',{p_room:state.roomId,p_limit:150,p_offset:state.data.logs.length});if(batch.length===0)toast('No older changes');else {state.data.logs.push(...batch);render()}return}
+ if(a==='load-older'){if(!isAdmin())throw Error('Admin only');const batch=await rpc('get_activity',{p_room:state.roomId,p_limit:ACTIVITY_PAGE_SIZE,p_offset:state.data.logs.length});if(batch.length===0)toast('No older changes');else {state.data.logs.push(...batch);render()}return}
  if(a==='use-demo'){state.mode='local';state.roomId=null;state.data=JSON.parse(localStorage.getItem('rfm_local')||'null')||seedData();render();return}
  }catch(err){toast(err.message||'Something went wrong',true)}
  });

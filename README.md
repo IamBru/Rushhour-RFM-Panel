@@ -237,9 +237,48 @@ Apply `supabase/migrations/202611220012_admin_storage_group_creation.sql` after 
 
 ## Owner-only recovery backups
 
-An opt-in GitHub Actions workflow prepares encrypted recovery points every six
-hours, including application database schemas/data and actual Storage files.
+An opt-in GitHub Actions workflow prepares encrypted recovery points once
+daily, including application database schemas/data and actual Storage files.
 It is **not active until the owner configures and enables it**. Follow
 [owner setup and recovery instructions](docs/owner-recovery.md), including the
 first restore drill. No SQL migration or panel permissions change is needed.
 The existing browser Backup button remains an inventory-only export.
+
+
+## Reduced egress (migration 013)
+
+Apply `supabase/migrations/202611240013_low_egress_snapshot.sql` in the existing
+Supabase SQL Editor after 001-012 **before pushing the updated frontend**. This
+adds `rfm_get_panel_snapshot(uuid,text)`; it does not modify existing records,
+RLS, Storage access or the original snapshot/export RPC. Each request verifies
+active membership and builds the same authorized panel data without activity
+rows. A matching revision returns a small response instead of repeating the
+payload. Hashing still reads/builds the snapshot in PostgreSQL: this reduces
+transfer volume, not database computation. Admin-only member/invitation fields
+remain guarded; the revision is a cache hint, never an authorization token.
+
+Automatic refresh now runs every 30 seconds while the tab is visible, skips
+busy/in-flight refreshes, and checks again when the tab becomes visible. Changes
+made by the current user still refresh immediately. Other users' changes may
+appear up to 30 seconds later. Ranks/prices load only for their active section.
+History is fetched only when Activity Logs is open, in 50-row pages. An unchanged
+first page keeps already-loaded history without requesting it again; changed
+history is reloaded to preserve older loaded rows and reflect cleared history.
+CSV export remains an explicit admin operation and fetches the full history.
+
+New item photos are compressed to at most 360px and receive one-year cache
+headers at their unique upload paths; replacing a photo generates a new URL.
+Existing images are not rewritten, deleted or re-uploaded. Their old cache
+headers remain in effect until a future replacement. Lazy loading remains on.
+Logo/storage image processing is unchanged. Long caching does not grant access
+or erase already-downloaded copies; existing Storage permissions are unchanged.
+
+Backups run once daily at 06:23 UTC, keeping only the latest successful upload.
+A restore can therefore lose up to a day's changes (more after missed runs).
+The schedule change takes effect on push; no live settings were changed here.
+
+Validation: frontend fixtures cover unchanged snapshots, hidden-tab polling,
+activity paging/preservation, demotion and revoked-session cleanup. Live SQL/RLS
+execution and cross-browser checks remain pending. Before deployment verify the
+new RPC rejects revoked/non-members, excludes admin fields for members, returns
+updated data after mutations, and leaves existing export clients working.

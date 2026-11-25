@@ -6,7 +6,7 @@ complete a restore drill before relying on it. No SQL migration is required.
 
 ## What is saved
 
-The GitHub Actions workflow runs every six hours (00:23, 06:23, 12:23, 18:23 UTC),
+The GitHub Actions workflow runs once daily (06:23 UTC),
 even when browsers are closed. It reads the existing Supabase project. It does
 not create another RFM group, write to the database, or alter panel permissions.
 
@@ -152,7 +152,7 @@ RPC and does not promise a one-click per-action undo.
   may remove the last pre-incident recovery point; there is no rolling history.
 - Removing old GitHub artifacts saves GitHub Actions storage, not Supabase database
   or file storage. It does not reduce the egress consumed by each new full backup.
-- Six-hour snapshots can lose up to six hours of work, or more if a run is late
+- Daily snapshots can lose up to 24 hours of work, or more if a run is late
   or fails. GitHub schedules are best-effort, not an exact recovery-time SLA.
 - Public-repository scheduled workflows can be disabled after 60 days without
   repository activity. Monitor this or use an always-on owner scheduler.

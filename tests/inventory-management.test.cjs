@@ -133,15 +133,15 @@ test('scroll restoration keeps visible rows anchored and restores page and modal
 });
 test('sync reloads older history instead of truncating it and does not resurrect cleared logs',async()=>{
  const f=fixture();
- f.run("state.mode='cloud';state.roomId='room';state.data.viewer={role:'admin'};state.data.logs=Array.from({length:300},(_,i)=>({id:300-i}));render=()=>{}");
+ f.run("state.mode='cloud';state.roomId='room';state.section='activity';snapshotRoom='room';state.data.viewer={role:'admin'};state.data.logs=Array.from({length:300},(_,i)=>({id:300-i}));render=()=>{}");
  const fresh=Array.from({length:301},(_,i)=>({id:301-i}));let pages=0;
  f.ctx.fakeRpc=async(name,args)=>{
-  if(name==='get_snapshot')return {viewer:{role:'admin'},logs:fresh.slice(0,150)};
+  if(name==='get_panel_snapshot')return {revision:'r1',data:{viewer:{role:'admin'},logs:[]}};
   pages++;return fresh.slice(args.p_offset,args.p_offset+args.p_limit);
  };
  f.run('rpc=fakeRpc');await f.run('refreshCloud(true)');
- assert.equal(f.run('state.data.logs.length'),301);assert.equal(f.run('state.data.logs.at(-1).id'),1);assert.equal(pages,1);
- f.ctx.fakeRpc=async()=>({viewer:{role:'admin'},logs:[]});f.run('rpc=fakeRpc');
+ assert.equal(f.run('state.data.logs.length'),301);assert.equal(f.run('state.data.logs.at(-1).id'),1);assert.equal(pages,7);
+ f.ctx.fakeRpc=async(name)=>name==='get_panel_snapshot'?{revision:'r1',data:null}:[];f.run('rpc=fakeRpc');
  await f.run('refreshCloud(true)');assert.equal(f.run('state.data.logs.length'),0);
 });
 test('configured categories drive create/edit dropdowns and rename updates items',async()=>{
@@ -452,4 +452,35 @@ test('rank connectors terminate at measured card edges after layout changes',()=
  const chart={getBoundingClientRect:()=>({left:10,top:10,width:200,height:250}),querySelector:()=>svg,querySelectorAll:()=>Object.entries(boxes).map(([id,rect])=>({dataset:{rankNode:id},getBoundingClientRect:()=>rect}))};
  f.ctx.chart=chart;f.run('drawRankLinks(chart)');assert.match(svg.innerHTML,/M50 100V114H70V128/);
  boxes.soldier.bottom=130;boxes.associate.top=158;f.run('drawRankLinks(chart)');assert.match(svg.innerHTML,/M50 120V134H70V148/);
+});
+
+
+test('conditional snapshots reuse data and activity is fetched only on its own tab',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';render=()=>{}");let calls=[];
+ f.ctx.fetch=async(name,args)=>{calls.push([name,args]);return {revision:'one',data:args.p_revision?null:{viewer:{role:'admin'},logs:[],items:[{id:'kept'}]}}};f.run('rpc=fetch');
+ await f.run('refreshCloud(true)');await f.run('refreshCloud(true)');
+ assert.deepEqual(calls.map(x=>x[0]),['get_panel_snapshot','get_panel_snapshot']);assert.equal(calls[1][1].p_revision,'one');assert.equal(f.run('state.data.items[0].id'),'kept');
+});
+test('unchanged activity head avoids fetching older pages again',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';state.section='activity';state.data.viewer={role:'admin'};state.data.logs=Array.from({length:300},(_,i)=>({id:300-i}))");let calls=0;
+ f.ctx.fetch=async()=>{calls++;return Array.from({length:50},(_,i)=>({id:300-i}))};f.run('rpc=fetch');await f.run('refreshActivity()');assert.equal(calls,1);assert.equal(f.run('state.data.logs.length'),300);
+});
+test('automatic polling pauses while hidden, busy, or already fetching; returning visible refreshes',async()=>{
+ const f=fixture();let calls=0;f.ctx.tick=async()=>{calls++};f.run("refreshCloud=tick;state.mode='cloud';state.roomId='room';document.hidden=true");await f.run('autoRefresh()');assert.equal(calls,0);
+ f.run('document.hidden=false;state.busy=true');await f.run('autoRefresh()');assert.equal(calls,0);
+ f.run('state.busy=false;cloudRefreshPromise=Promise.resolve()');await f.run('autoRefresh()');assert.equal(calls,0);
+ f.run('cloudRefreshPromise=null');f.events.visibilitychange();assert.equal(calls,1);
+});
+test('demotion clears cached logs and revoked membership cannot reuse a revision',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';snapshotRoom='room';snapshotRevision='old';state.section='activity';state.data.logs=[{id:1}];render=()=>{};closeModal=()=>{};toast=()=>{};localStorage.removeItem=()=>{}");
+ f.ctx.fetch=async()=>({revision:'member',data:{viewer:{role:'member'},logs:[]}});f.run('rpc=fetch');await f.run('refreshCloud()');assert.equal(f.run('state.data.logs.length'),0);assert.equal(f.run('state.section'),'storage');
+ f.ctx.fetch=async()=>{throw Error('membership is inactive')};f.run('rpc=fetch');await f.run('refreshCloud()');assert.equal(f.run('state.data'),null);assert.equal(f.run('snapshotRevision'),null);
+});
+
+test('activity offers older pages after the initial 50 rows',()=>{
+ const f=fixture();f.run("state.mode='cloud';state.data.logs=Array.from({length:50},(_,i)=>({id:i,action:'test',created_at:'2026-11-24'}))");assert.match(f.run('renderActivity()'),/data-action="load-older"/);
+});
+test('overlapping automatic refreshes share one request',async()=>{
+ const f=fixture();let resolve,calls=0;f.ctx.fetch=()=>{calls++;return new Promise(r=>resolve=r)};f.run("rpc=fetch;state.mode='cloud';state.roomId='room';render=()=>{}");
+ const first=f.run('refreshCloud(true)'),second=f.run('refreshCloud(true)');assert.equal(calls,1);resolve({revision:'r',data:{viewer:{role:'member'},logs:[]}});await Promise.all([first,second]);assert.equal(calls,1);
 });
