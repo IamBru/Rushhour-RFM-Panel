@@ -315,3 +315,36 @@ Add/remove/move an item normally: the following response should contain `stock`
 without unchanged `items`, `storages` or `room`. Compare its transferred size to
 the former 77 KB snapshot. Initial loads and actual metadata changes may still
 return larger responses; no exact savings are promised before measurement.
+
+
+## Prices, Ranks and shared browser polling (migration 015)
+
+1. Run `supabase/migrations/202611250015_prices_ranks_snapshots.sql` in the
+   existing project's Supabase SQL Editor, after 014.
+2. Commit/push the frontend normally, then reload open panel tabs.
+
+Prices and Ranks now send a revision and receive `data: null` when unchanged.
+Their existing authorized read RPCs run before comparing revisions, including
+on unchanged requests. The initial response and actual changes still contain the
+whole section. This migration adds no tables, writes, or new membership powers;
+old RPCs remain for already-open clients. Server computation is not reduced.
+
+Visible tabs with the same authenticated user, project, room, role and section
+share one automatic poller using Web Locks and BroadcastChannel. Updates are
+shared in memory only, never stored on disk. A hidden/closed poller releases its
+lock for another visible tab. Unsupported browsers and a stalled poller fall
+back to independent reads. Different sections poll independently; Activity also
+keeps independent paging to preserve each tab's loaded history. Own saves and
+refreshes always run directly. Cached navigation remains limited to 30 seconds.
+
+The status dot is green after successful sync and red on a failed request,
+failed section refresh or browser offline event. A successful sync clears the
+error. This describes the last observed connection state, not an uninterrupted
+server health guarantee.
+
+Local fixture tests exercise conditional responses/deletions, cache scope,
+shared polling/handover, own writes, watchdog fallback and status recovery.
+Live SQL authorization checks and desktop/mobile visual checks remain pending.
+Before release, verify the new RPCs reject non-members/revoked members even with
+matching revisions. In two visible windows on the same section, automatic reads
+should appear mainly in one Network panel, while both UIs receive updates.

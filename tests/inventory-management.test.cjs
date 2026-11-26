@@ -264,7 +264,7 @@ test('Blueprint descriptions have independent quantities in one storage and neve
  const f=blueprintFixture();const item=f.run("JSON.stringify(state.data.items.find(x=>x.id==='bp'))");
  f.run("demoChange('add','bp','','storage-0',5,'Rifle');demoChange('add','bp','','storage-0',3,'Armor');demoChange('move','bp','storage-0','storage-1',2,'Rifle')");
  assert.equal(f.run("stockQty('bp','storage-0','Rifle')"),3);assert.equal(f.run("stockQty('bp','storage-0','Armor')"),3);
- assert.equal(f.run("stockQty('bp','storage-1','Rifle')"),2);assert.equal(f.run("total('bp')"),8);
+ assert.equal(f.run("stockQty('bp','storage-1','Rifle')"),2);assert.equal(JSON.parse(f.run("JSON.stringify(state.data.stock)")).filter(x=>x.item_id==='bp').reduce((n,x)=>n+x.quantity,0),8);
  f.run("quantityModal({action:'remove',itemId:'bp',fromId:'storage-0',blueprintDescription:'Armor'})");await f.run('removeAll()');
  assert.equal(f.run("stockQty('bp','storage-0','Armor')"),0);assert.equal(f.run("stockQty('bp','storage-0','Rifle')"),3);
  assert.equal(f.run("JSON.stringify(state.data.items.find(x=>x.id==='bp'))"),item);
@@ -505,7 +505,7 @@ test('partial demotion clears admin-only caches even if response omits those col
 });
 
 test('tab navigation caches successful reads, expires after 30 seconds, and forced refresh bypasses cache',async()=>{
- const f=fixture();let calls=0;f.ctx.fetch=async()=>{calls++;return {vendors:[],entries:[]}};
+ const f=fixture();let calls=0;f.ctx.fetch=async()=>{calls++;return {revision:'v1',data:{vendors:[],entries:[]}}};
  f.run("state.mode='cloud';state.roomId='room';state.data.viewer={user_id:'one',role:'admin'};rpc=fetch");
  await f.run('loadPrices(true)');await f.run('loadPrices(true)');assert.equal(calls,1);
  await f.run('loadPrices()');assert.equal(calls,2);
@@ -516,7 +516,7 @@ test('tab navigation caches successful reads, expires after 30 seconds, and forc
 
 test('failed tab reads are retried and successful mutations invalidate cached tabs',async()=>{
  const f=fixture();let calls=0,fail=false;
- f.ctx.api=async(name)=>{calls++;return fail?{error:{message:'offline'}}:{data:{vendors:[],entries:[]}}};
+ f.ctx.api=async(name)=>{calls++;return fail?{error:{message:'offline'}}:{data:{revision:'v1',data:{vendors:[],entries:[]}}}};
  f.run("state.mode='cloud';state.roomId='room';state.client={rpc:api}");
  await f.run('loadPrices(true)');await f.run('loadPrices(true)');assert.equal(calls,1);
  await f.run("rpc('change_stock',{})");await f.run('loadPrices(true)');assert.equal(calls,3);
@@ -530,4 +530,101 @@ test('cached activity keeps loaded history and cannot bypass the admin check',as
  await f.run('refreshActivity(true)');await f.run('refreshActivity(true)');assert.equal(calls,1);assert.equal(f.run('state.data.logs.length'),1);
  await f.run('refreshActivity()');assert.equal(calls,2);
  f.run("state.data.viewer.role='member'");await f.run('refreshActivity(true)');assert.equal(calls,2);
+});
+
+test('section revisions retain unchanged boards and replace empty data after deletion',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';state.data.viewer={user_id:'one',role:'member'}");
+ let calls=[],reply={revision:'v1',data:{vendors:[{id:'v'}],entries:[{id:'e'}],quality_colors:{Rare:'#fff'}}};
+ f.ctx.fetch=async(name,args)=>{calls.push([name,args]);return reply};f.run('rpc=fetch');
+ await f.run('loadPrices()');reply={revision:'v1',data:null};await f.run('loadPrices()');
+ assert.equal(calls[0][0],'get_prices_snapshot');assert.equal(calls[0][1].p_revision,null);assert.equal(calls[1][1].p_revision,'v1');assert.equal(f.run('state.priceBoard.entries.length'),1);
+ reply={revision:'v2',data:{vendors:[],entries:[],quality_colors:{}}};await f.run('loadPrices()');assert.equal(f.run('state.priceBoard.entries.length'),0);
+ f.run("state.roomId='other'");await f.run('loadPrices()');assert.equal(calls.at(-1)[1].p_revision,null);
+});
+
+test('rank snapshot retains names and assignments when unchanged and retries failures',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room'");let reply={revision:'r1',data:{ranks:Array.from({length:9},(_,i)=>({key:String(i)})),members:[{name:'Person'}]}};
+ f.ctx.fetch=async()=>reply;f.run('rpc=fetch');await f.run('loadRanks()');reply={revision:'r1',data:null};await f.run('loadRanks()');assert.equal(f.run('state.rankBoard.members[0].name'),'Person');
+ f.ctx.fetch=async()=>{throw Error('no access')};f.run('rpc=fetch');await assert.rejects(f.run('loadRanks()'),/no access/);assert.equal(f.run('state.rankBoard'),null);
+});
+
+function sharedBrowser(){
+ const channels=new Set(),queues=new Map();
+ class Channel{
+  constructor(key){this.key=key;channels.add(this)}
+  postMessage(data){for(const c of channels)if(c!==this&&c.key===this.key)c.onmessage?.({data:structuredClone(data)})}
+  close(){channels.delete(this)}
+ }
+ const locks={request(key,{signal},callback){return new Promise((resolve,reject)=>{
+  const queue=queues.get(key)||[];queues.set(key,queue);
+  const job={start(){if(signal.aborted){finish();reject(Error('aborted'));return}job.active=true;Promise.resolve(callback()).then(resolve,reject).finally(finish)}};
+  function finish(){const index=queue.indexOf(job);if(index>=0)queue.splice(index,1);if(index===0)queue[0]?.start()}
+  signal.addEventListener('abort',()=>{if(!job.active){finish();reject(Error('aborted'))}},{once:true});queue.push(job);if(queue.length===1)job.start();
+ })}};
+ return {Channel,locks};
+}
+const settle=()=>new Promise(resolve=>setImmediate(resolve));
+function sharedFixture(browser){
+ const f=fixture();f.ctx.BroadcastChannel=browser.Channel;f.ctx.navigator={locks:browser.locks};f.ctx.AbortController=AbortController;
+ f.run("state.mode='cloud';state.roomId='room';state.authUserId='user';state.client={supabaseUrl:'https://project.supabase.co'};state.data.viewer={user_id:'user',role:'admin'};render=()=>{};state.lastSync=Date.now();");
+ return f;
+}
+
+test('two visible tabs elect one poller, share data, and hand over when the leader hides',async()=>{
+ const browser=sharedBrowser(),a=sharedFixture(browser),b=sharedFixture(browser);let reads=0;
+ for(const f of [a,b]){f.ctx.fetch=async()=>{reads++;return {revision:{stock:'s1'},data:{viewer:{user_id:'user',role:'admin'},stock:[{item_id:'item',quantity:7}]}}};f.run('rpc=fetch;configureSharedSync()')}
+ assert.equal(a.run('sharedSync.leader'),true);assert.equal(b.run('sharedSync.leader'),false);
+ await a.run('autoRefresh()');await b.run('autoRefresh()');assert.equal(reads,1);assert.equal(b.run('state.data.stock[0].quantity'),7);
+ a.run('document.hidden=true;configureSharedSync()');await settle();assert.equal(b.run('sharedSync.leader'),true);
+ await b.run('autoRefresh()');assert.equal(reads,2);
+ a.run('stopSharedSync()');b.run('stopSharedSync()');await settle();
+});
+
+test('shared polling does not block own edits, cross roles, or overwrite a busy tab',async()=>{
+ const browser=sharedBrowser(),a=sharedFixture(browser),b=sharedFixture(browser);let writes=0;
+ for(const f of [a,b])f.run('configureSharedSync()');
+ b.ctx.api=async()=>{writes++;return {data:true}};b.run('state.client.rpc=api');await b.run("rpc('change_stock',{})");assert.equal(writes,1);
+ b.run('state.busy=true');a.run("state.data.stock=[{quantity:88}];snapshotRevision={stock:'s'};state.lastSync=Date.now()+10;publishSharedSync()");assert.notEqual(b.run('state.data.stock[0]?.quantity'),88);
+ b.run("state.busy=false;state.data.viewer.role='member';configureSharedSync()");assert.equal(b.run('sharedSync.leader'),true);
+ a.run('publishSharedSync()');assert.notEqual(b.run('state.data.stock[0]?.quantity'),88);
+ a.run('stopSharedSync()');b.run('stopSharedSync()');await settle();
+});
+
+test('follower watchdog polls on a stalled leader and Activity keeps independent paging',async()=>{
+ const browser=sharedBrowser(),a=sharedFixture(browser),b=sharedFixture(browser);let reads=0;
+ for(const f of [a,b])f.run('configureSharedSync()');
+ b.ctx.fetch=async()=>{reads++};b.run('refreshCloud=fetch;sharedSync.received=Date.now()-46000');await b.run('autoRefresh()');assert.equal(reads,1);
+ b.run("state.section='activity';configureSharedSync()");assert.equal(b.run('sharedSync'),null);await b.run('autoRefresh()');assert.equal(reads,2);
+ a.run('stopSharedSync()');b.run('stopSharedSync()');await settle();
+});
+
+test('indicator turns red on request failure and green after a successful complete sync',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';state.lastSync=Date.now();render=()=>{};state.client={rpc:async()=>({error:{message:'offline'}})}");
+ await assert.rejects(f.run("rpc('get_panel_delta',{})"),/offline/);assert.match(f.run('syncStatus()'),/dot error/);assert.doesNotMatch(f.run('syncStatus()'),/RFM connected/);
+ f.ctx.api=async()=>({data:{revision:{},data:{viewer:{role:'member'}}}});f.run('state.client.rpc=api');await f.run('refreshCloud()');assert.doesNotMatch(f.run('syncStatus()'),/dot error/);assert.match(f.run('syncStatus()'),/RFM connected/);
+});
+
+test('a peer revocation clears cached panel data and stops coordination',async()=>{
+ const browser=sharedBrowser(),a=sharedFixture(browser),b=sharedFixture(browser);
+ for(const f of [a,b])f.run('localStorage.removeItem=()=>{};closeModal=()=>{};toast=()=>{};configureSharedSync()');
+ a.run("sendSharedMessage({type:'revoked'})");assert.equal(b.run('state.data'),null);assert.equal(b.run('sharedSync'),null);assert.equal(b.run('state.roomId'),null);
+ a.run('stopSharedSync()');await settle();
+});
+
+test('a broken browser channel cannot turn a successful stock save into a failed save',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.client={rpc:async()=>({data:true})};sharedSync={channel:{postMessage(){throw Error('channel closed')},close(){}},controller:{abort(){}}}");
+ assert.equal(await f.run("rpc('change_stock',{})"),true);assert.equal(f.run('sharedSync'),null);
+});
+
+test('sync does not apply a response overtaken by a local or peer mutation',async()=>{
+ const f=fixture();let resolve;f.ctx.fetch=()=>new Promise(r=>resolve=r);
+ f.run("state.mode='cloud';state.roomId='room';rpc=fetch;render=()=>{}");const before=f.run('JSON.stringify(state.data.stock)');
+ const pending=f.run('refreshCloud()');f.run('mutationEpoch++');resolve({revision:{stock:'old'},data:{stock:[]}});await pending;
+ assert.equal(f.run('JSON.stringify(state.data.stock)'),before);
+});
+
+test('a failed section refresh keeps the indicator red even if the panel read succeeded',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';state.section='prices';render=()=>{}");
+ f.ctx.api=async(name)=>name==='rfm_get_panel_delta'?{data:{revision:{},data:{viewer:{role:'member'}}}}:{error:{message:'section unavailable'}};
+ f.run('state.client={rpc:api}');await f.run('refreshCloud()');assert.match(f.run('syncStatus()'),/dot error/);
 });
