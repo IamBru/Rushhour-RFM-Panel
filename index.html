@@ -784,9 +784,9 @@ function syncHealth(ok){
  if(indicator&&state.mode==='cloud')indicator.innerHTML=syncStatus();
 }
 function syncStatus(){
- if(state.mode==='local')return state.connectionError?'<i class="dot error"></i>RFM connection issue ? reload to retry':'<i class="dot local"></i>Local demo';
+ if(state.mode==='local')return state.connectionError?'<i class="dot error"></i>RFM connection issue &middot; reload to retry':'<i class="dot local"></i>Local demo';
  const healthy=state.lastSync&&!state.connectionError;
- return `<i class="dot ${healthy?'':'error'}"></i>${healthy?`RFM connected ? syncs every ${SYNC_INTERVAL_MS/1000}s while visible`:'RFM connection / sync issue ? retrying'}`;
+ return `<i class="dot ${healthy?'':'error'}"></i>${healthy?`RFM connected &middot; syncs every ${SYNC_INTERVAL_MS/1000}s while visible`:'RFM connection / sync issue &middot; retrying'}`;
 }
 async function rpc(name,args){
  try{
