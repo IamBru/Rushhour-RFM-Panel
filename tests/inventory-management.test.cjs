@@ -136,12 +136,12 @@ test('sync reloads older history instead of truncating it and does not resurrect
  f.run("state.mode='cloud';state.roomId='room';state.section='activity';snapshotRoom='room';state.data.viewer={role:'admin'};state.data.logs=Array.from({length:300},(_,i)=>({id:300-i}));render=()=>{}");
  const fresh=Array.from({length:301},(_,i)=>({id:301-i}));let pages=0;
  f.ctx.fakeRpc=async(name,args)=>{
-  if(name==='get_panel_snapshot')return {revision:'r1',data:{viewer:{role:'admin'},logs:[]}};
+  if(name==='get_panel_delta')return {revision:{viewer:'r1'},data:{viewer:{role:'admin'},logs:[]}};
   pages++;return fresh.slice(args.p_offset,args.p_offset+args.p_limit);
  };
  f.run('rpc=fakeRpc');await f.run('refreshCloud(true)');
  assert.equal(f.run('state.data.logs.length'),301);assert.equal(f.run('state.data.logs.at(-1).id'),1);assert.equal(pages,7);
- f.ctx.fakeRpc=async(name)=>name==='get_panel_snapshot'?{revision:'r1',data:null}:[];f.run('rpc=fakeRpc');
+ f.ctx.fakeRpc=async(name)=>name==='get_panel_delta'?{revision:{viewer:'r1'},data:null}:[];f.run('rpc=fakeRpc');
  await f.run('refreshCloud(true)');assert.equal(f.run('state.data.logs.length'),0);
 });
 test('configured categories drive create/edit dropdowns and rename updates items',async()=>{
@@ -457,9 +457,9 @@ test('rank connectors terminate at measured card edges after layout changes',()=
 
 test('conditional snapshots reuse data and activity is fetched only on its own tab',async()=>{
  const f=fixture();f.run("state.mode='cloud';state.roomId='room';render=()=>{}");let calls=[];
- f.ctx.fetch=async(name,args)=>{calls.push([name,args]);return {revision:'one',data:args.p_revision?null:{viewer:{role:'admin'},logs:[],items:[{id:'kept'}]}}};f.run('rpc=fetch');
+ f.ctx.fetch=async(name,args)=>{calls.push([name,args]);return {revision:{items:'one'},data:args.p_revisions.items?{}:{viewer:{role:'admin'},logs:[],items:[{id:'kept'}]}}};f.run('rpc=fetch');
  await f.run('refreshCloud(true)');await f.run('refreshCloud(true)');
- assert.deepEqual(calls.map(x=>x[0]),['get_panel_snapshot','get_panel_snapshot']);assert.equal(calls[1][1].p_revision,'one');assert.equal(f.run('state.data.items[0].id'),'kept');
+ assert.deepEqual(calls.map(x=>x[0]),['get_panel_delta','get_panel_delta']);assert.equal(calls[1][1].p_revisions.items,'one');assert.equal(f.run('state.data.items[0].id'),'kept');
 });
 test('unchanged activity head avoids fetching older pages again',async()=>{
  const f=fixture();f.run("state.mode='cloud';state.roomId='room';state.section='activity';state.data.viewer={role:'admin'};state.data.logs=Array.from({length:300},(_,i)=>({id:300-i}))");let calls=0;
@@ -483,4 +483,23 @@ test('activity offers older pages after the initial 50 rows',()=>{
 test('overlapping automatic refreshes share one request',async()=>{
  const f=fixture();let resolve,calls=0;f.ctx.fetch=()=>{calls++;return new Promise(r=>resolve=r)};f.run("rpc=fetch;state.mode='cloud';state.roomId='room';render=()=>{}");
  const first=f.run('refreshCloud(true)'),second=f.run('refreshCloud(true)');assert.equal(calls,1);resolve({revision:'r',data:{viewer:{role:'member'},logs:[]}});await Promise.all([first,second]);assert.equal(calls,1);
+});
+
+
+test('stock-only sync retains metadata, preserves variants, and replaces cleared stock',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';render=()=>{}");
+ const first={viewer:{role:'admin',user_id:'one'},room:{id:'room',logo_data:'logo'},items:[{id:'bp',name:'Blueprint'}],storages:[{id:'a',image_data:'picture'},{id:'b'}],stock:[{item_id:'bp',storage_id:'a',blueprint_description:'Alpha',quantity:2}],members:[],invites:[]};
+ let reply={revision:{stock:'s1',items:'i1',storages:'t1'},data:first};f.ctx.fetch=async()=>reply;f.run('rpc=fetch');await f.run('refreshCloud()');
+ f.run("state.data.logs=[{id:99}]");
+ reply={revision:{stock:'s2',items:'i1',storages:'t1'},data:{stock:[{item_id:'bp',storage_id:'a',blueprint_description:'Alpha',quantity:1},{item_id:'bp',storage_id:'b',blueprint_description:'Alpha',quantity:1},{item_id:'bp',storage_id:'a',blueprint_description:'Beta',quantity:4}]}};
+ await f.run('refreshCloud()');assert.equal(f.run('state.data.room.logo_data'),'logo');assert.equal(f.run('state.data.storages[0].image_data'),'picture');assert.equal(f.run('state.data.items[0].name'),'Blueprint');assert.equal(f.run('state.data.stock.length'),3);assert.equal(f.run('state.data.logs[0].id'),99);
+ reply={revision:{stock:'empty'},data:{stock:[]}};await f.run('refreshCloud()');assert.equal(f.run('state.data.stock.length'),0);assert.equal(f.run('state.data.items.length'),1);
+});
+test('room changes send no previous revisions and do not reuse old-room data',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='new';snapshotRoom='old';snapshotRevision={stock:'old'};state.data.room={id:'old',logo_data:'private-old'};render=()=>{}");
+ f.ctx.fetch=async(name,args)=>{assert.equal(Object.keys(args.p_revisions).length,0);return {revision:{room:'new'},data:{room:{id:'new'},viewer:{role:'member'},stock:[]}}};f.run('rpc=fetch');await f.run('refreshCloud()');assert.equal(f.run('state.data.room.id'),'new');assert.equal(f.run('state.data.room.logo_data'),undefined);assert.equal(f.run('state.data.logs.length'),0);
+});
+test('partial demotion clears admin-only caches even if response omits those collections',async()=>{
+ const f=fixture();f.run("state.mode='cloud';state.roomId='room';snapshotRoom='room';state.data.viewer={role:'admin'};state.data.members=[{name:'Admin-only'}];state.data.invites=[{id:'private'}];state.data.logs=[{id:1}];render=()=>{}");
+ f.ctx.fetch=async()=>({revision:{viewer:'member'},data:{viewer:{role:'member'}}});f.run('rpc=fetch');await f.run('refreshCloud()');for(const key of ['members','invites','logs'])assert.equal(f.run('state.data.'+key+'.length'),0);
 });

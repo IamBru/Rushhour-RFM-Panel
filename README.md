@@ -282,3 +282,36 @@ activity paging/preservation, demotion and revoked-session cleanup. Live SQL/RLS
 execution and cross-browser checks remain pending. Before deployment verify the
 new RPC rejects revoked/non-members, excludes admin fields for members, returns
 updated data after mutations, and leaves existing export clients working.
+
+
+## Quantity updates without repeated metadata (migration 014)
+
+Apply `supabase/migrations/202611250014_section_snapshot.sql` in the existing
+Supabase SQL Editor **after 013 and before pushing this frontend**. Then push
+through GitHub Desktop and reload open member tabs.
+
+The new `rfm_get_panel_delta` read RPC checks the existing active membership and
+admin rules through migration 013's authorized snapshot, then compares a revision
+for each collection. Initial load still returns the full authorized panel. Stock
+changes return the stock collection while unchanged catalog entries, storage
+pictures, logo, members and invitations are omitted. All stock rows are included
+when stock changes; this is collection-level synchronization, not a per-row event
+stream. Empty collections remove deleted rows from the browser. Blueprint variants
+stay distinct. Changes to other collections still synchronize normally.
+
+The client merges omitted collections from its in-memory same-room cache. It
+clears admin-only data on demotion and clears all panel caches on revocation.
+Backend authorization runs even when every revision matches. This creates no
+new tables and changes no write permissions, RLS, stock or history. Existing read
+RPCs and exports remain compatible. The server still constructs the snapshot;
+this targets network egress rather than database computation. Polling intervals,
+on-demand activity and backup settings are unchanged.
+
+Local tests cover stock-only refresh, movement/description variants, empty stock,
+metadata retention, cached history, room changes, demotion and revocation. Live
+SQL execution/permission checks and measured production transfer sizes remain
+pending. After applying and deploying, Network should show `rfm_get_panel_delta`.
+Add/remove/move an item normally: the following response should contain `stock`
+without unchanged `items`, `storages` or `room`. Compare its transferred size to
+the former 77 KB snapshot. Initial loads and actual metadata changes may still
+return larger responses; no exact savings are promised before measurement.
