@@ -311,7 +311,25 @@ function renderSections(){return `<nav class="tabs panel-tabs" aria-label="Panel
 function defaultRanks(){return [
  ['boss','Boss','Don / Godfather'],['underboss','Underboss',''],['consigliere','Consigliere',''],['crew_chief','Crew Chief',''],['caporegime','Caporegime','Capo'],['lieutenant','Lieutenant','Tenente'],['soldier','Soldier','Soldato'],['associate','Associate',''],['prospect','Prospect','Recruit']
  ].map(([key,name,subtitle],i)=>({key,name,subtitle,position:i+1,version:1,promotions:key==='lieutenant'?['Coordinator','Family Representative','Advisor','Treasurer']:key==='soldier'?['Hustler','Enforcer','Fixer','Recruiter','Loyalist','Veteran']:[]}))}
-async function loadRanks(){
+// Navigation reuses successful reads briefly; polling, edits and Retry bypass it.
+const tabReadCache=new Map();
+let tabCacheGeneration=0;
+function tabCacheScope(){return JSON.stringify([state.mode,state.roomId,state.data?.viewer?.user_id,state.data?.viewer?.role])}
+function invalidateTabCache(){tabReadCache.clear();tabCacheGeneration++}
+async function readTab(section,load,useCache=false){
+ const scope=tabCacheScope(),generation=tabCacheGeneration,entry=tabReadCache.get(section);
+ if(useCache&&state.mode==='cloud'&&entry?.scope===scope&&Date.now()-entry.time<SYNC_INTERVAL_MS)return;
+ tabReadCache.delete(section);
+ await load();
+ if(scope===tabCacheScope()&&generation===tabCacheGeneration)tabReadCache.set(section,{scope,time:Date.now()});
+}
+function loadRanks(useCache=false){return readTab('ranks',fetchRanks,useCache)}
+function loadPrices(useCache=false){return readTab('prices',fetchPrices,useCache)}
+function refreshActivity(useCache=false){
+ if(!isAdmin()||state.section!=='activity')return;
+ return readTab('activity',fetchActivity,useCache);
+}
+async function fetchRanks(){
  if(state.mode==='local'){
   state.data.family_ranks??=defaultRanks();state.data.family_assignments??=[];
   state.rankBoard={ranks:state.data.family_ranks,members:(state.data.members||[]).filter(m=>m.active).map(m=>({...m,...state.data.family_assignments.find(a=>a.user_id===m.user_id)}))};state.rankError='';return;
@@ -424,7 +442,7 @@ function renderPrices(){
  return `<div class="board-head"><div><h2 class="title">Item Prices</h2><p class="help">Items sold to vendors, separate from storage inventory.</p></div>${isAdmin()&&board?'<button class="btn soft" data-action="price-edit" data-kind="vendor">+ New vendor</button>':''}</div>${state.priceError?`<div class="empty">${esc(state.priceError)}<button class="btn" data-action="reload-prices">Retry</button></div>`:''}${!board?'<div class="empty">Vendor prices are not loaded yet.</div>':`<div class="price-vendors">${board.vendors.map(v=>`<section class="panel"><div class="storage-group-head price-head"><h2 class="storage-group-title">${esc(v.name)}</h2>${isAdmin()?`<div class="flex"><button class="btn soft" data-action="price-edit" data-kind="entry" data-vendor="${esc(v.id)}">+ Add item</button>${priceControls('vendor',v.id)}</div>`:''}</div>${priceFilterBar(v)}<div class="price-table-wrap" data-scroll-key="vendor-${esc(v.id)}"><table class="price-table"><thead><tr>${priceHeaders(v.id)}${isAdmin()?'<th>Actions</th>':''}</tr></thead><tbody>${filteredPrices(v.id).map(x=>`<tr data-scroll-anchor="price-${esc(x.id)}"><td>${esc(x.name)}</td><td style="color:${rarityColor(x.quality)}">${esc(x.quality)}</td><td>${esc(x.rolls)}</td>${isAdmin()?`<td>${priceControls('entry',x.id)}</td>`:''}</tr>`).join('')||`<tr><td colspan="${isAdmin()?4:3}" class="help">${board.entries.some(x=>x.vendor_id===v.id)?'No items match these filters.':'No items listed for this vendor yet.'}</td></tr>`}</tbody></table></div></section>`).join('')||'<div class="empty">No vendors yet. An admin can add Pawn Shop, Fence, or other vendors.</div>'}</div>`}`;
 }
 function priceControls(kind,id){return `<div class="entity-actions"><button class="photo-button danger" data-action="price-delete" data-kind="${kind}" data-id="${esc(id)}" aria-label="Delete ${kind}">${actionIcon('delete')}</button><button class="photo-button" data-action="price-edit" data-kind="${kind}" data-id="${esc(id)}" aria-label="Edit ${kind}">${actionIcon('edit')}</button></div>`}
-async function loadPrices(){
+async function fetchPrices(){
  if(state.mode==='local'){state.data.price_board??={vendors:[],entries:[]};state.priceBoard=state.data.price_board;state.priceError='';return}
  try{state.priceBoard=await rpc('get_item_prices',{p_room:state.roomId});state.priceError=''}catch(err){state.priceBoard=null;state.priceError='Unable to load vendor prices. Check the connection and ensure the Item Prices database migration is applied.';throw err}
 }
@@ -752,7 +770,7 @@ async function clearLogs(){
   try{await refreshCloud()}catch{toast('Logs cleared, but the panel could not refresh. Refresh the page.',true)}
  }finally{state.busy=false;if(button)button.disabled=false;}
 }
-async function rpc(name, args){const {data,error}=await state.client.rpc('rfm_'+name,args);if(error)throw new Error(error.message||'Request failed');return data}
+async function rpc(name, args){const {data,error}=await state.client.rpc('rfm_'+name,args);if(error)throw new Error(error.message||'Request failed');if(!name.startsWith('get_'))invalidateTabCache();return data}
 async function connectCloud(url,key){if(!window.supabase)throw Error('Cloud library unavailable. Check internet access.');if(!/^https:\/\/[\w.-]+\.supabase\.co\/?$/.test(url.trim()))throw Error('Enter a valid Supabase project URL');if(key.includes('service_role')||key.startsWith('sb_secret_'))throw Error('Do not use a secret key. Use the publishable / anon key.');
  const client=window.supabase.createClient(url.trim().replace(/\/$/,''),key.trim(),{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
  let {data:{session},error}=await client.auth.getSession();if(error)throw error;if(!session){const res=await client.auth.signInAnonymously();if(res.error)throw new Error(res.error.message+' — enable Anonymous Sign-ins in Supabase Authentication.');}
@@ -785,7 +803,7 @@ function autoRefresh(){
  if(document.hidden||state.mode!=='cloud'||!state.roomId||state.busy||cloudRefreshPromise)return;
  return refreshCloud(true).catch(()=>{});
 }
-async function refreshActivity(){
+async function fetchActivity(){
  if(!isAdmin()||state.section!=='activity')return;
  const room=state.roomId,previous=state.data.logs||[];
  const head=await rpc('get_activity',{p_room:room,p_limit:ACTIVITY_PAGE_SIZE,p_offset:0});
@@ -812,6 +830,7 @@ async function refreshCloudData(silent){
   // Missing collections are unchanged; empty collections replace deleted data.
   // Never merge a different room's cache into this response.
   const cached=snapshotRoom===room?state.data:null;
+  if(!cached||Object.keys(result.data||{}).length)invalidateTabCache();
   state.data={...cached,...result.data,logs:cached?.logs||[]};
   if(state.data.viewer?.role!=='admin'){
    state.data.logs=[];state.data.members=[];state.data.invites=[];
@@ -826,7 +845,7 @@ async function refreshCloudData(silent){
   if(!silent||!document.activeElement||(!['item-search','log-search'].includes(document.activeElement.id)&&!document.activeElement.dataset?.priceSearch))render();
  }catch(e){
   if(/membership is inactive|do not have access/i.test(e.message)){
-   state.roomId=null;snapshotRoom=null;snapshotRevision=null;state.data=null;state.rankBoard=null;state.priceBoard=null;
+   invalidateTabCache();state.roomId=null;snapshotRoom=null;snapshotRevision=null;state.data=null;state.rankBoard=null;state.priceBoard=null;
    localStorage.removeItem('rfm_room_id');state.section='storage';closeModal();render();toast('Your RFM access has been revoked.',true);return;
   }
   throw e;
@@ -854,7 +873,7 @@ function bind(){
  const pressedBackdrop=backdropPress;backdropPress=null;
  const el=e.target.closest('[data-action]');if(!el)return;const a=el.dataset.action;
  try{
- if(a==='section'){if(!['storage','prices','ranks','activity'].includes(el.dataset.section))return;if(el.dataset.section==='activity'&&!isAdmin())throw Error('Admin only');state.section=el.dataset.section;if(state.section==='activity'&&state.mode==='cloud'){await refreshCloud();return}if(state.section==='ranks'){try{await loadRanks()}catch{}}if(state.section==='prices'){try{await loadPrices()}catch{}}render();return}
+ if(a==='section'){if(!['storage','prices','ranks','activity'].includes(el.dataset.section))return;if(el.dataset.section==='activity'&&!isAdmin())throw Error('Admin only');state.section=el.dataset.section;if(state.section==='activity'&&state.mode==='cloud'){await refreshActivity(true)}if(state.section==='ranks'){try{await loadRanks(true)}catch{}}if(state.section==='prices'){try{await loadPrices(true)}catch{}}render();return}
  if(a==='reload-ranks'){try{await loadRanks()}catch{}render();return}
  if(a==='rank-edit'){editRankModal(el.dataset.key);return}
  if(a==='rank-assign'){assignRankModal(el.dataset.user);return}

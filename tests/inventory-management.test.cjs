@@ -503,3 +503,31 @@ test('partial demotion clears admin-only caches even if response omits those col
  const f=fixture();f.run("state.mode='cloud';state.roomId='room';snapshotRoom='room';state.data.viewer={role:'admin'};state.data.members=[{name:'Admin-only'}];state.data.invites=[{id:'private'}];state.data.logs=[{id:1}];render=()=>{}");
  f.ctx.fetch=async()=>({revision:{viewer:'member'},data:{viewer:{role:'member'}}});f.run('rpc=fetch');await f.run('refreshCloud()');for(const key of ['members','invites','logs'])assert.equal(f.run('state.data.'+key+'.length'),0);
 });
+
+test('tab navigation caches successful reads, expires after 30 seconds, and forced refresh bypasses cache',async()=>{
+ const f=fixture();let calls=0;f.ctx.fetch=async()=>{calls++;return {vendors:[],entries:[]}};
+ f.run("state.mode='cloud';state.roomId='room';state.data.viewer={user_id:'one',role:'admin'};rpc=fetch");
+ await f.run('loadPrices(true)');await f.run('loadPrices(true)');assert.equal(calls,1);
+ await f.run('loadPrices()');assert.equal(calls,2);
+ f.run("tabReadCache.get('prices').time-=30000");await f.run('loadPrices(true)');assert.equal(calls,3);
+ f.run("state.data.viewer.role='member'");await f.run('loadPrices(true)');assert.equal(calls,4);
+ f.run("state.roomId='other'");await f.run('loadPrices(true)');assert.equal(calls,5);
+});
+
+test('failed tab reads are retried and successful mutations invalidate cached tabs',async()=>{
+ const f=fixture();let calls=0,fail=false;
+ f.ctx.api=async(name)=>{calls++;return fail?{error:{message:'offline'}}:{data:{vendors:[],entries:[]}}};
+ f.run("state.mode='cloud';state.roomId='room';state.client={rpc:api}");
+ await f.run('loadPrices(true)');await f.run('loadPrices(true)');assert.equal(calls,1);
+ await f.run("rpc('change_stock',{})");await f.run('loadPrices(true)');assert.equal(calls,3);
+ fail=true;await assert.rejects(f.run('loadPrices()'),/offline/);
+ fail=false;await f.run('loadPrices(true)');assert.equal(calls,5);
+});
+
+test('cached activity keeps loaded history and cannot bypass the admin check',async()=>{
+ const f=fixture();let calls=0;f.ctx.fetch=async()=>{calls++;return [{id:1}]};
+ f.run("state.mode='cloud';state.roomId='room';state.section='activity';state.data.viewer={role:'admin'};rpc=fetch");
+ await f.run('refreshActivity(true)');await f.run('refreshActivity(true)');assert.equal(calls,1);assert.equal(f.run('state.data.logs.length'),1);
+ await f.run('refreshActivity()');assert.equal(calls,2);
+ f.run("state.data.viewer.role='member'");await f.run('refreshActivity(true)');assert.equal(calls,2);
+});
